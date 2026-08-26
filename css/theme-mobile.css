@@ -1,0 +1,233 @@
+/* ============ 主题：手机端 —— Material Design 3 + Telegram 式布局 ============
+   布局参考 Telegram Mobile；底栏参考 InstallerX Revived 的
+   Material 3 Expressive / Miuix 浮动导航（悬浮药丸 + 选中胶囊指示），CSS 自实现 */
+html.theme-mobile, html.theme-mobile body {
+  --bg: #0f1115;
+  --panel: #14171d;
+  --panel-2: #1c2028;
+  --border: #ffffff12;
+  --border-2: #ffffff1e;
+  --text: #e8eaf0;
+  --muted: #9aa0ae;
+  --muted-2: #6d7280;
+  --accent: #4f7cff;
+  --accent-2: #7a5cff;
+  --green: #5dd9a3;
+  --red: #ff6b6b;
+  --scrollbar: #333a48;
+  --radius-btn: 16px;
+  --radius-icon: 14px;
+  --radius-item: 16px;
+  --radius-room-avatar: 14px;
+  --radius-bubble: 18px;
+  --surface: #191d25;
+  --surface-strong: #20242e;
+  --primary: #4f7cff;
+  --primary-container: rgba(79, 124, 255, 0.22);
+  --on-primary: #ffffff;
+  --bubble: #222731;
+  --bubble-border: transparent;
+  --bubble-own: linear-gradient(135deg, #4f7cff, #6a5cff);
+  --item-active: rgba(79, 124, 255, 0.14);
+  --item-active-border: transparent;
+  --font: 'Segoe UI', 'PingFang SC', 'HarmonyOS Sans SC', 'Microsoft YaHei', system-ui, sans-serif;
+}
+
+/* ============ 移动端布局：三视图 + 聊天页 + 悬浮底栏 ============ */
+html.theme-mobile .t-bubbles { display: none; }
+
+html.theme-mobile .app { display: block; position: fixed; inset: 0; }
+
+/* 会话列表页（tab: chats） */
+html.theme-mobile .sidebar {
+  position: fixed; inset: 0;
+  width: 100%; min-width: 0; max-width: none;
+  transform: none !important;
+  border-right: none;
+  z-index: 50;
+  background: var(--bg);
+}
+html.theme-mobile .side-head {
+  padding: 14px 16px calc(12px + env(safe-area-inset-top));
+  border-bottom: none;
+}
+html.theme-mobile .side-head .brand { font-size: 22px; }
+
+/* 聊天页 */
+html.theme-mobile .main {
+  position: fixed; inset: 0; z-index: 55;
+  display: none;
+  background: var(--bg);
+}
+html.theme-mobile body.chat-open .main { display: flex; }
+html.theme-mobile .main-header { padding-top: env(safe-area-inset-top); height: auto; min-height: 56px; }
+html.theme-mobile .main-header .back { display: none; }
+html.theme-mobile body.chat-open .main-header .back { display: grid; }
+html.theme-mobile .room-title-wrap { text-align: left; }
+html.theme-mobile .room-title { font-size: 15px; }
+html.theme-mobile .composer {
+  padding-bottom: calc(10px + env(safe-area-inset-bottom));
+}
+html.theme-mobile .composer textarea { border-radius: 20px; min-height: 44px; }
+html.theme-mobile .send-mini {
+  width: 46px; height: 46px; padding: 0;
+  border-radius: 50%;
+  background: var(--bubble-own);
+  display: grid; place-items: center;
+  font-size: 0;
+}
+html.theme-mobile .send-mini::after { content: '➤'; font-size: 16px; color: #fff; }
+
+/* 底部悬浮导航（InstallX Revived / Miuix 式） */
+html.theme-mobile .floatnav {
+  display: flex;
+  position: fixed;
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  left: 50%; transform: translateX(-50%);
+  z-index: 72;
+  background: rgba(22, 26, 34, 0.88);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  border: 1px solid #ffffff14;
+  border-radius: 30px;
+  padding: 5px 7px;
+  gap: 2px;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.55);
+  transition: opacity .22s ease, transform .22s ease;
+}
+html.theme-mobile .fn-item {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  min-width: 70px; padding: 5px 6px;
+  border: none; background: none;
+  border-radius: 22px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color .2s;
+}
+html.theme-mobile .fn-item .fn-icon {
+  font-size: 20px; line-height: 1;
+  padding: 6px 16px;
+  border-radius: 20px;
+  transition: background .2s, transform .2s;
+}
+html.theme-mobile .fn-item .fn-label { font-size: 10.5px; font-weight: 600; letter-spacing: .3px; }
+html.theme-mobile .fn-item.active { color: var(--primary); }
+html.theme-mobile .fn-item.active .fn-icon {
+  background: var(--primary-container);
+  transform: scale(1.05);
+}
+html.theme-mobile .fn-item:active .fn-icon { transform: scale(.92); }
+
+/* 聊天页打开时隐藏底栏与各视图 */
+html.theme-mobile body.chat-open .floatnav,
+html.theme-mobile body.chat-open .sidebar,
+html.theme-mobile body.chat-open .mobile-views { display: none !important; }
+
+/* 联系人 / 设置视图 */
+html.theme-mobile .mobile-views { display: block; }
+html.theme-mobile .mview {
+  position: fixed; inset: 0; z-index: 50;
+  display: none;
+  flex-direction: column;
+  background: var(--bg);
+}
+html.theme-mobile body.mview-contacts .mview#mContacts { display: flex; }
+html.theme-mobile body.mview-settings  .mview#mSettings  { display: flex; }
+html.theme-mobile body.mview-contacts .sidebar,
+html.theme-mobile body.mview-settings .sidebar { display: none; }
+
+html.theme-mobile .mview-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 16px calc(10px + env(safe-area-inset-top));
+}
+html.theme-mobile .mview-head .mview-title { font-size: 24px; font-weight: 800; }
+html.theme-mobile .mview-head .mview-actions { display: flex; gap: 10px; }
+html.theme-mobile .mview-head .icon-btn {
+  background: var(--panel-2);
+  border: none; width: 40px; height: 40px; border-radius: 50%;
+}
+
+html.theme-mobile .mview .search-box { padding: 4px 16px 12px; }
+html.theme-mobile .mview .search-box input {
+  border-radius: 22px; padding: 12px 16px; font-size: 15px;
+  background: var(--panel-2); border: none;
+}
+
+html.theme-mobile .mlist { flex: 1; overflow-y: auto; padding: 4px 10px 140px; }
+html.theme-mobile .room-list { padding-bottom: 150px; }
+html.theme-mobile .room-item { padding: 10px; }
+html.theme-mobile .side-section { margin: 10px 8px 4px; font-size: 12px; }
+html.theme-mobile .empty-list { padding-top: 60px; }
+
+/* 设置页 */
+html.theme-mobile .mprofile {
+  display: flex; align-items: center; gap: 14px;
+  margin: 6px 16px 16px;
+  padding: 16px;
+  background: var(--panel);
+  border-radius: 22px;
+  border: 1px solid var(--border);
+}
+html.theme-mobile .mprofile .mprofile-name { font-size: 18px; font-weight: 700; }
+html.theme-mobile .mprofile .mprofile-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+html.theme-mobile .msetting-list { margin: 0 16px; display: flex; flex-direction: column; gap: 10px; }
+html.theme-mobile .msetting-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  font-size: 14.5px; font-weight: 600;
+  cursor: pointer;
+}
+html.theme-mobile .msetting-item .micon { font-size: 20px; }
+html.theme-mobile .msetting-item .right { margin-left: auto; color: var(--muted-2); font-size: 12.5px; font-weight: 400; }
+
+/* Telegram 式消息 */
+html.theme-mobile .messages { padding: 14px 14px 8px; }
+html.theme-mobile .msg { margin: 12px 0; max-width: 86%; }
+html.theme-mobile .msg-body { max-width: 100%; }
+html.theme-mobile .bubble {
+  font-size: 15.5px; padding: 10px 14px;
+  border-radius: 18px; border-top-left-radius: 6px;
+}
+html.theme-mobile .msg.own .bubble { border-radius: 18px; border-top-right-radius: 6px; }
+html.theme-mobile .msg .avatar { width: 40px; height: 40px; }
+html.theme-mobile .day-sep { margin: 20px 0 8px; }
+
+/* 表情面板：MD3 浮层圆角 */
+html.theme-mobile .emoji-panel {
+  left: 12px; right: 12px;
+  width: auto;
+  bottom: 88px;
+  border-radius: 24px;
+  background: var(--surface-strong);
+  border: 1px solid var(--border-2);
+}
+html.theme-mobile .emoji-btn { font-size: 24px; padding: 6px; }
+
+/* MD3 弹窗：底部滑出式 */
+html.theme-mobile .modal-overlay { align-items: flex-end; padding: 0; }
+html.theme-mobile .modal {
+  width: 100%; max-width: none;
+  border-radius: 28px 28px 0 0;
+  padding: 20px 18px calc(20px + env(safe-area-inset-bottom));
+  background: var(--surface-strong);
+  border: none;
+  animation: msheet-up .25s ease;
+}
+@keyframes msheet-up { from { transform: translateY(40px); opacity: .6; } }
+
+/* 登录页：MD3 卡片 */
+html.theme-mobile .auth-card {
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  box-shadow: 0 18px 60px rgba(0,0,0,.55);
+}
+html.theme-mobile .field input { border-radius: 14px; background: var(--panel-2); border: none; padding: 14px 16px; }
+html.theme-mobile .btn-primary { border-radius: 16px; }
+html.theme-mobile .auth-tabs .tab, html.theme-mobile .auth-tabs { border-radius: 14px; }
+
+/* toast 上浮 */
+html.theme-mobile .toasts { bottom: 110px; }
