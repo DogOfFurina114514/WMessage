@@ -1,0 +1,29 @@
+# WMessage 后端 —— Cloudflare Workers 配置
+name = "wmessage-backend"
+main = "src/index.js"
+compatibility_date = "2024-12-01"
+
+# 数据库（必须）：先执行 wrangler d1 create wmessage-db，再把输出的 database_id 填到下面
+[[d1_databases]]
+binding = "DB"
+database_name = "wmessage-db"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+
+# 实时聊天室（Durable Object），每个会话一个实例
+[durable_objects]
+bindings = [
+  { name = "CHAT_ROOM", class_name = "ChatRoom" }
+]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ChatRoom"]
+
+# 图片上传（可选）：先执行 wrangler r2 bucket create wmessage-images，再取消下面注释
+# [[r2_buckets]]
+# binding = "R2"
+# bucket_name = "wmessage-images"
+
+# 生产环境建议收紧来源（逗号分隔，默认允许所有来源）：
+# [vars]
+# ALLOWED_ORIGINS = "https://dogoffurina114514.github.io"
