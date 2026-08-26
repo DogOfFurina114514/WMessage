@@ -1,6 +1,6 @@
 // WMessage 前端主逻辑
 import {
-  getApiBase, setApiBase, getToken, setToken, getUser, setUser, clearAuth,
+  getApiBase, getToken, setToken, getUser, setUser, clearAuth,
   getUnread, bumpUnread, resetUnread, getNotify, setNotify,
 } from './store.js';
 import * as api from './api.js';
@@ -86,7 +86,6 @@ function showAuth() {
         </form>
         <div class="auth-foot">
           <span id="authTip">还没有账号？点击「注册」创建</span>
-          <button type="button" class="link-btn" id="apiSettings">⚙ API 设置</button>
         </div>
       </div>
     </div>`;
@@ -125,22 +124,6 @@ function showAuth() {
     } finally {
       btn.disabled = false;
     }
-  });
-
-  $('#apiSettings').addEventListener('click', () => {
-    const input = el('input', { value: getApiBase(), placeholder: 'https://你的-worker.workers.dev' });
-    modal({
-      title: 'API 服务地址',
-      body: el('div', null,
-        el('div', { class: 'field' }, input),
-        el('div', { style: 'color:var(--muted-2);font-size:12px;line-height:1.7' },
-          '后端 Cloudflare Worker 地址。部署后若前端无法连接，在此填入你的 Worker 地址并保存。')
-      ),
-      actions: [
-        { label: '取消' },
-        { label: '保存', primary: true, onClick: () => { setApiBase(input.value || getApiBase()); toast('已保存，正在刷新…'); setTimeout(() => location.reload(), 400); } },
-      ],
-    });
   });
 }
 
