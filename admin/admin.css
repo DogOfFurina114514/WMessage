@@ -1,0 +1,75 @@
+/* WMessage 管理面板样式 */
+.admin-shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+.admin-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 22px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.admin-title { font-weight: 700; font-size: 16px; }
+.admin-user { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+.admin-user .btn { width: auto; padding: 7px 14px; }
+
+.admin-main {
+  flex: 1;
+  width: min(760px, 100%);
+  margin: 0 auto;
+  padding: 26px 18px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.admin-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 20px;
+}
+.admin-card h2 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--text);
+}
+.admin-muted { color: var(--muted); font-size: 13.5px; line-height: 1.7; }
+.admin-muted .ok { color: var(--green); font-weight: 600; }
+.admin-tip {
+  color: var(--muted-2);
+  font-size: 12.5px;
+  line-height: 1.9;
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+.admin-tip code {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--accent);
+  word-break: break-all;
+}
+.api-row { display: flex; gap: 10px; align-items: center; }
+.api-row input {
+  flex: 1;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-size: 14px;
+  min-width: 0;
+}
+.api-row input:focus { border-color: var(--accent); outline: none; }
+.api-btn { width: auto; flex: none; padding: 11px 22px; }
