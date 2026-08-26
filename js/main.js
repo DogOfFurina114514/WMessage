@@ -25,7 +25,38 @@ const state = {
   typingTimer: null,
   typingClearTimer: null,
   pending: new Map(), // clientId -> msg
+  mobileView: 'chats',
 };
+
+/* ==================== 平台检测与主题 ====================
+   Electron → theme-desktop(Fluent/WinUI) ；手机/PWA → theme-mobile(MD3) ；
+   桌面浏览器 → theme-web(dogoffurinagi 玻璃风) */
+function detectPlatform() {
+  const isElectron = !!(window.desktop && window.desktop.isDesktop);
+  const isMobile = !isElectron && (
+    matchMedia('(max-width: 820px)').matches ||
+    /Mobi|Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)
+  );
+  const theme = isElectron ? 'desktop' : isMobile ? 'mobile' : 'web';
+  document.documentElement.classList.add('theme-' + theme);
+  state.isMobile = isMobile;
+  state.isElectron = isElectron;
+}
+detectPlatform();
+
+function setMobileView(view) {
+  state.mobileView = view;
+  if (state.isMobile) {
+    document.body.classList.remove('mview-chats', 'mview-contacts', 'mview-settings');
+    document.body.classList.add('mview-' + view);
+    document.querySelectorAll('.fn-item').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
+  }
+}
+
+function setChatOpen(open) {
+  if (state.isMobile) document.body.classList.toggle('chat-open', open);
+}
+
 
 /* ==================== 启动 ==================== */
 
@@ -132,6 +163,8 @@ function showAuth() {
 function appTemplate() {
   return `
   <div class="app">
+    <!-- 网页端主题：上升气泡背景（仅 theme-web 显示） -->
+    <div class="t-bubbles"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
     <aside class="sidebar" id="sidebar">
       <div class="side-head">
         <div class="brand"><img src="./logo.svg" alt=""><span>WMessage</span></div>
@@ -187,6 +220,39 @@ function appTemplate() {
       </div>
       <div class="members-list" id="membersList"></div>
     </aside>
+
+    <!-- 移动端视图：联系人 / 设置（手机端 tab 页，仅 theme-mobile 显示） -->
+    <div class="mobile-views">
+      <section class="mview" id="mContacts">
+        <div class="mview-head">
+          <div class="mview-title">联系人</div>
+          <div class="mview-actions">
+            <button class="icon-btn" id="mDiscoverBtn" title="发现频道">🧭</button>
+          </div>
+        </div>
+        <div class="search-box">
+          <input id="mSearchInput" placeholder="搜索用户，发起私聊…" autocomplete="off">
+          <div class="search-pop" id="mSearchPop" hidden></div>
+        </div>
+        <div class="mlist" id="mDmList"></div>
+      </section>
+      <section class="mview" id="mSettings">
+        <div class="mview-head"><div class="mview-title">设置</div></div>
+        <div class="mprofile" id="mProfile"></div>
+        <div class="msetting-list">
+          <div class="msetting-item" id="mNotifyBtn"><span class="micon">🔔</span> 桌面通知 <span class="right" id="mNotifyState">未开启</span></div>
+          <div class="msetting-item" id="mVersionItem"><span class="micon">ℹ️</span> API 地址 <span class="right" id="mVersion"></span></div>
+          <div class="msetting-item" id="mLogoutBtn"><span class="micon">🚪</span> 退出登录 <span class="right">›</span></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 悬浮底栏（InstallerX Revived / Miuix 式浮动导航） -->
+    <nav class="floatnav" id="floatNav">
+      <button type="button" class="fn-item active" data-view="chats"><span class="fn-icon">💬</span><span class="fn-label">会话</span></button>
+      <button type="button" class="fn-item" data-view="contacts"><span class="fn-icon">👥</span><span class="fn-label">联系人</span></button>
+      <button type="button" class="fn-item" data-view="settings"><span class="fn-icon">⚙️</span><span class="fn-label">设置</span></button>
+    </nav>
   </div>`;
 }
 
@@ -197,6 +263,10 @@ function enterApp() {
   bindAppEvents();
   renderUserChip();
   renderNotifyBtn();
+  if (state.isMobile) {
+    setMobileView('chats');
+    renderMobilePanel();
+  }
   // 探测能力
   api.health().then((h) => {
     state.uploadEnabled = !!h.upload;
@@ -204,6 +274,38 @@ function enterApp() {
     if (btn) btn.hidden = !state.uploadEnabled;
   }).catch(() => {});
   loadRooms();
+}
+
+/* ==================== 移动端面板（联系人/设置 tab） ==================== */
+function renderMobilePanel() {
+  const u = state.user;
+  if (!u) return;
+  const prof = $('#mProfile');
+  if (prof) {
+    prof.innerHTML = '';
+    prof.append(
+      avatarEl(u.nickname, u.avatarColor, 54),
+      el('div', null,
+        el('div', { class: 'mprofile-name' }, u.nickname),
+        el('div', { class: 'mprofile-sub' }, '@' + u.username))
+    );
+  }
+  const ver = $('#mVersion');
+  if (ver) ver.textContent = getApiBase().replace(/^https?:\/\//, '');
+  renderMobileDmList();
+}
+
+function renderMobileDmList() {
+  const list = $('#mDmList');
+  if (!list) return;
+  list.innerHTML = '';
+  const dms = state.rooms.filter((r) => r.type === 'dm').sort((a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0));
+  if (!dms.length) {
+    list.append(el('div', { class: 'empty-list' }, '还没有私聊，<br>搜索用户或从频道成员列表发起'));
+    return;
+  }
+  list.append(el('div', { class: 'side-section' }, '私聊'));
+  for (const r of dms) list.append(roomItem(r));
 }
 
 async function loadRooms() {
@@ -273,6 +375,7 @@ function renderRooms() {
   const dm = section('私聊', dms);
   if (ch) list.append(ch);
   if (dm) list.append(dm);
+  if (state.isMobile) renderMobileDmList();
 }
 
 function roomItem(r) {
@@ -329,6 +432,7 @@ async function openRoom(room) {
     toast(e.message, 'error');
   }
   connectRoom(room.id);
+  if (state.isMobile) setChatOpen(true);
 }
 
 function roomCache(roomId) {
@@ -743,9 +847,10 @@ async function uploadFile(file) {
 
 let searchTimer = null;
 
-function bindSearch() {
-  const input = $('#searchInput');
-  const pop = $('#searchPop');
+function bindSearch(inputSel = '#searchInput', popSel = '#searchPop') {
+  const input = $(inputSel);
+  const pop = $(popSel);
+  if (!input || !pop) return;
   input.addEventListener('input', () => {
     clearTimeout(searchTimer);
     const q = input.value.trim();
@@ -790,6 +895,7 @@ async function startDmAndOpen(user) {
     state.rooms = state.rooms.filter((r) => r.id !== room.id);
     state.rooms.push({ ...room, partner: user });
     renderRooms();
+    if (state.isMobile) setMobileView('chats');
     openRoom(state.rooms[state.rooms.length - 1]);
   } catch (e) {
     toast(e.message, 'error');
@@ -901,8 +1007,9 @@ function confirmLeaveChannel() {
 
 function renderNotifyBtn() {
   const btn = $('#notifyBtn');
-  if (!btn) return;
-  btn.classList.toggle('active', getNotify());
+  if (btn) btn.classList.toggle('active', getNotify());
+  const st = $('#mNotifyState');
+  if (st) st.textContent = getNotify() ? '已开启' : '未开启';
 }
 
 function toggleNotify() {
@@ -979,10 +1086,30 @@ function bindAppEvents() {
   $('#userChip').addEventListener('click', () => logout());
   $('#newChannelBtn').addEventListener('click', openNewChannelModal);
   $('#discoverBtn').addEventListener('click', openDiscoverModal);
-  bindSearch();
+  bindSearch('#searchInput', '#searchPop');
 
-  // 移动端侧边栏
+  // 移动端：悬浮底栏 + 联系人/设置视图
+  const floatNav = $('#floatNav');
+  if (floatNav) {
+    floatNav.addEventListener('click', (e) => {
+      const btn = e.target.closest('.fn-item');
+      if (btn) setMobileView(btn.dataset.view);
+    });
+    bindSearch('#mSearchInput', '#mSearchPop');
+  }
+  const mDiscover = $('#mDiscoverBtn');
+  if (mDiscover) mDiscover.addEventListener('click', openDiscoverModal);
+  const mNotify = $('#mNotifyBtn');
+  if (mNotify) mNotify.addEventListener('click', toggleNotify);
+  const mLogout = $('#mLogoutBtn');
+  if (mLogout) mLogout.addEventListener('click', () => logout());
+
+  // 返回按钮：移动端=退出聊天回列表；桌面/窄窗=打开侧栏
   $('#backBtn').addEventListener('click', () => {
+    if (state.isMobile && document.body.classList.contains('chat-open')) {
+      setChatOpen(false);
+      return;
+    }
     $('#sidebar').classList.add('open');
     $('#backdrop').hidden = false;
   });
