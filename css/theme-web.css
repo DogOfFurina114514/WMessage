@@ -1,0 +1,82 @@
+/* ============ 主题：网页端 —— dogoffurinagi.fucku.top 风格 ============
+   深青蓝渐变海洋 + 上升气泡动画 + 毛玻璃卡片 + 蓝白发光文字 */
+html.theme-web, html.theme-web body {
+  --bg: #0f2027;
+  --panel: rgba(255, 255, 255, 0.07);
+  --panel-2: rgba(255, 255, 255, 0.10);
+  --border: rgba(255, 255, 255, 0.12);
+  --border-2: rgba(255, 255, 255, 0.20);
+  --text: #eaf6ff;
+  --muted: #a0c4ff;
+  --muted-2: #7fa8d9;
+  --accent: #4facfe;
+  --accent-2: #2ea7e0;
+  --green: #4ade80;
+  --red: #f87171;
+  --scrollbar: rgba(255,255,255,.18);
+  --glass-blur: blur(15px);
+  --glow: 0 0 15px rgba(79, 172, 254, 0.55);
+  --radius-btn: 12px;
+  --radius-icon: 11px;
+  --radius-item: 14px;
+  --radius-bubble: 15px;
+  --surface: rgba(255, 255, 255, 0.08);
+  --surface-strong: rgba(13, 32, 44, 0.75);
+  --btn-primary: linear-gradient(135deg, rgba(79,172,254,.9), rgba(46,167,224,.9));
+  --bubble: rgba(255, 255, 255, 0.10);
+  --bubble-border: rgba(255, 255, 255, 0.18);
+  --bubble-own: linear-gradient(135deg, rgba(79,172,254,.85), rgba(30,120,190,.85));
+  --item-active: rgba(79, 172, 254, 0.16);
+  --item-active-border: rgba(79, 172, 254, 0.45);
+}
+
+/* 海洋背景 + 上升气泡 */
+html.theme-web body {
+  background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+}
+
+html.theme-web .t-bubbles {
+  display: block;
+  position: fixed; inset: 0; overflow: hidden;
+  pointer-events: none; z-index: 0;
+}
+html.theme-web .t-bubbles i {
+  position: absolute; bottom: -120px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(79, 172, 254, 0.3);
+  animation: t-rise 11s infinite ease-in;
+}
+html.theme-web .t-bubbles i:nth-child(1)  { left: 6%;  width: 26px; height: 26px; animation-duration: 11s; }
+html.theme-web .t-bubbles i:nth-child(2)  { left: 17%; width: 14px; height: 14px; animation-duration: 9s;  animation-delay: 1.2s; }
+html.theme-web .t-bubbles i:nth-child(3)  { left: 29%; width: 34px; height: 34px; animation-duration: 13s; animation-delay: .6s; }
+html.theme-web .t-bubbles i:nth-child(4)  { left: 42%; width: 18px; height: 18px; animation-duration: 8s;  animation-delay: 2s; }
+html.theme-web .t-bubbles i:nth-child(5)  { left: 55%; width: 28px; height: 28px; animation-duration: 12s; animation-delay: .3s; }
+html.theme-web .t-bubbles i:nth-child(6)  { left: 66%; width: 12px; height: 12px; animation-duration: 9.5s; animation-delay: 1.6s; }
+html.theme-web .t-bubbles i:nth-child(7)  { left: 76%; width: 30px; height: 30px; animation-duration: 14s; animation-delay: .9s; }
+html.theme-web .t-bubbles i:nth-child(8)  { left: 87%; width: 20px; height: 20px; animation-duration: 10s; animation-delay: 2.4s; }
+html.theme-web .t-bubbles i:nth-child(9)  { left: 94%; width: 16px; height: 16px; animation-duration: 8.5s; animation-delay: 1s; }
+@keyframes t-rise {
+  0%   { transform: translateY(0) scale(1);    opacity: .65; }
+  100% { transform: translateY(-112vh) scale(1.45); opacity: 0; }
+}
+
+/* 玻璃质感 */
+html.theme-web .auth-card,
+html.theme-web .modal {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+html.theme-web .auth-brand h1 { text-shadow: 0 0 15px rgba(79, 172, 254, 0.8); }
+html.theme-web .auth-brand p { text-shadow: 0 0 8px rgba(160, 196, 255, .5); }
+
+html.theme-web .room-title {
+  text-shadow: 0 0 12px rgba(79, 172, 254, 0.6);
+}
+
+/* 弹窗/列表等浮层渐变呼吸 */
+html.theme-web .toast {
+  background: rgba(13, 32, 44, 0.85);
+  border-color: rgba(79, 172, 254, 0.35);
+}
