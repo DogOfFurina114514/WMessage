@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <title>WMessage 控制面板</title>
+  <meta name="theme-color" content="#0b0e1a">
+  <link rel="icon" href="../icons/favicon-32.png" type="image/png">
+  <link rel="stylesheet" href="../css/styles.css">
+  <link rel="stylesheet" href="./admin.css">
+</head>
+<body>
+  <div class="auth">
+    <div class="orb a"></div><div class="orb b"></div>
+    <div class="auth-card">
+      <div class="auth-brand">
+        <img src="../logo.svg" alt="WMessage">
+        <h1>WMessage</h1>
+        <p>控制面板登录</p>
+      </div>
+      <form id="signinForm" autocomplete="off">
+        <div class="field">
+          <label>账号</label>
+          <input id="userInput" autocomplete="username" required>
+        </div>
+        <div class="field">
+          <label>密码</label>
+          <input id="passInput" type="password" autocomplete="current-password" required>
+        </div>
+        <div class="auth-error" id="msg"></div>
+        <button class="btn btn-primary" id="submitBtn" type="submit">登 录</button>
+      </form>
+    </div>
+  </div>
+  <script type="module" src="./signin.js"></script>
+</body>
+</html>
