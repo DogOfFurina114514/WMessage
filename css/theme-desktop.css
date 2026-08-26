@@ -1,0 +1,117 @@
+/* ============ 主题：电脑端（Electron）—— WinUI3 / Fluent Design 风 ============
+   参考 Fluent Design：Mica 深色背景、Segoe UI Variable、细线描边、
+   Reveal 高亮、小圆角控件、accent 蓝 (#60cdff/#0078d4 系)，代码自实现 */
+html.theme-desktop, html.theme-desktop body {
+  --bg: #111318;
+  --panel: #1b1e24;
+  --panel-2: #24272e;
+  --border: #ffffff14;
+  --border-2: #ffffff24;
+  --text: #f3f4f6;
+  --muted: #a8adb8;
+  --muted-2: #7c828d;
+  --accent: #4cc2ff;
+  --accent-2: #0078d4;
+  --green: #6ccb5f;
+  --red: #ff99a4;
+  --scrollbar: #3a3f4a;
+  --radius-btn: 6px;
+  --radius-icon: 6px;
+  --radius-item: 6px;
+  --radius-room-avatar: 6px;
+  --radius-bubble: 8px;
+  --surface: #1b1e24f0;
+  --surface-strong: #20242bf0;
+  --bubble: #2b2f38;
+  --bubble-border: #ffffff10;
+  --bubble-own: linear-gradient(135deg, #1364b4, #0d5aa5);
+  --item-active: #1f2d3c;
+  --item-active-border: transparent;
+  --font: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, 'Microsoft YaHei', sans-serif;
+}
+
+/* Mica 式深色底（细微层次渐变 + 顶部光晕） */
+html.theme-desktop body {
+  background:
+    radial-gradient(1200px 500px at 18% -10%, rgba(76, 194, 255, 0.07), transparent 60%),
+    radial-gradient(900px 420px at 90% 110%, rgba(0, 120, 212, 0.05), transparent 60%),
+    #111318;
+}
+
+/* 窗口标题栏（Electron 内视觉模拟） */
+html.theme-desktop .main-header {
+  height: 48px;
+  background: #1b1e24;
+  border-bottom: 1px solid #ffffff10;
+}
+html.theme-desktop .room-title { font-size: 14px; font-weight: 600; }
+
+/* Fluent 控件：小圆角 + 细边框 + Reveal 高亮 */
+html.theme-desktop .icon-btn {
+  background: transparent;
+  border: 1px solid #ffffff18;
+  border-radius: 5px;
+}
+html.theme-desktop .icon-btn:hover {
+  background: linear-gradient(135deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
+  border-color: #ffffff2e;
+}
+html.theme-desktop .room-item { border-radius: 6px; }
+html.theme-desktop .room-item:hover {
+  background: linear-gradient(135deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+}
+html.theme-desktop .room-item.active {
+  background: #1f2d3c;
+  border: 1px solid rgba(76, 194, 255, 0.25);
+}
+html.theme-desktop .room-item.active .room-name { color: #cfeaff; }
+
+html.theme-desktop .bubble { border-radius: 8px; border-top-left-radius: 3px; }
+html.theme-desktop .msg.own .bubble { border-top-right-radius: 3px; }
+
+html.theme-desktop .composer textarea { border-radius: 8px; }
+
+/* Fluent 分割线感 */
+html.theme-desktop .side-head,
+html.theme-desktop .main-header,
+html.theme-desktop .composer {
+  border-color: #ffffff12;
+}
+
+/* 侧栏 NavigationView 式 */
+html.theme-desktop .side-head {
+  height: 48px;
+  padding: 0 16px;
+}
+html.theme-desktop .sidebar {
+  border-right: 1px solid #ffffff12;
+  background: #16181d;
+}
+
+/* 弹窗/Flyout */
+html.theme-desktop .modal {
+  background: #20242b;
+  border: 1px solid #ffffff1a;
+  border-radius: 8px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.55);
+}
+html.theme-desktop .more-pop, html.theme-desktop .search-pop, html.theme-desktop .emoji-panel {
+  background: #20242b;
+  border-color: #ffffff1a;
+  border-radius: 8px;
+}
+
+/* 滚动条 */
+html.theme-desktop ::-webkit-scrollbar { width: 12px; }
+html.theme-desktop ::-webkit-scrollbar-thumb {
+  background: #3a3f4a;
+  border: 3px solid #111318;
+  border-radius: 6px;
+}
+
+/* 按钮 accented（Fluent PrimaryButton） */
+html.theme-desktop .btn-primary {
+  background: linear-gradient(135deg, #2b88d8, #1364b4);
+  border: 1px solid #4cc2ff55;
+  border-radius: 6px;
+}
