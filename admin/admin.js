@@ -1,11 +1,18 @@
 // WMessage 管理面板逻辑
 // 注意：仅通过直接输入网址访问（https://…/WMessage/admin），站点内无任何入口链接
+// 安全模型：密码为单向加密存储（PBKDF2-SHA256 + 随机盐 + 150000 次迭代），此处仅存 salt/hash 密文；
+//           输入时通过 Web Crypto 实时验算，比较过程使用恒定时间算法。
 const ADMIN_USER = 'DogOfFurina';
-const ADMIN_PASS = 'Wu201112290311';
+const ADMIN_HASH = {
+  salt: 'IpWaffJmUK6yp9BoaQAziQ',
+  hash: 'nedyWZ+Ddv43CCnTYTzY2MFQVaQRotnF0JaOuLQHK3k=',
+  iterations: 150000,
+};
 const SESSION_KEY = 'wmessage_admin_session';
 const API_KEY = 'wmessage_api_base';
 const MAX_ATTEMPTS = 5;
 const LOCK_MS = 60 * 1000; // 5 次失败锁定 1 分钟
+const VERIFY_DEBOUNCE = 400; // 实时验算防抖（ms）
 
 function getApiBase() {
   const custom = (localStorage.getItem(API_KEY) || '').replace(/\/+$/, '');
@@ -15,7 +22,45 @@ function getApiBase() {
 
 const $ = (sel) => document.querySelector(sel);
 
-/* ---------------- 登录 ---------------- */
+/* ---------------- 单向密码验算（PBKDF2） ---------------- */
+function bytesToB64(bytes) {
+  let s = '';
+  for (const b of bytes) s += String.fromCharCode(b);
+  return btoa(s);
+}
+
+function constEq(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+async function verifyPassword(password) {
+  try {
+    const enc = new TextEncoder();
+    const key = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits(
+      { name: 'PBKDF2', salt: enc.encode(ADMIN_HASH.salt), iterations: ADMIN_HASH.iterations, hash: 'SHA-256' },
+      key,
+      256
+    );
+    return constEq(bytesToB64(new Uint8Array(bits)), ADMIN_HASH.hash);
+  } catch {
+    return false;
+  }
+}
+
+/* ---------------- 登录与实时验算 ---------------- */
+let lastVerify = { value: '', ok: false };
+
+function setHint(state, text) {
+  const hint = $('#passHint');
+  if (!hint) return;
+  hint.className = 'auth-hint' + (state ? ' ' + state : '');
+  hint.textContent = text || '';
+}
+
 function showLogin() {
   $('#loginView').hidden = false;
   $('#panelView').hidden = true;
@@ -35,14 +80,34 @@ function doLogout() {
   $('#adminUser').value = '';
   $('#adminPass').value = '';
   $('#adminError').textContent = '';
+  setHint('', '');
+  lastVerify = { value: '', ok: false };
 }
 
 function bindLogin() {
-  $('#adminForm').addEventListener('submit', (e) => {
+  // 实时验算：输入防抖 400ms 后计算密码哈希并比对
+  let verifyTimer = null;
+  $('#adminPass').addEventListener('input', () => {
+    clearTimeout(verifyTimer);
+    const pwd = $('#adminPass').value;
+    if (!pwd) {
+      setHint('', '');
+      lastVerify = { value: '', ok: false };
+      return;
+    }
+    setHint('', '验算中…');
+    verifyTimer = setTimeout(async () => {
+      const ok = await verifyPassword(pwd);
+      lastVerify = { value: pwd, ok };
+      setHint(ok ? 'ok' : 'bad', ok ? '✔ 密码正确，点击「登录」进入面板' : '✘ 密码错误');
+    }, VERIFY_DEBOUNCE);
+  });
+
+  $('#adminForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const errEl = $('#adminError');
     const u = $('#adminUser').value.trim();
-    const p = $('#adminPass').value;
+    const pwd = $('#adminPass').value;
 
     let lockUntil = parseInt(localStorage.getItem('wmessage_admin_lock') || '0', 10);
     if (Date.now() < lockUntil) {
@@ -50,9 +115,14 @@ function bindLogin() {
       return;
     }
 
-    if (u === ADMIN_USER && p === ADMIN_PASS) {
+    // 信任实时验算缓存；否则（如直接回车）现算
+    let passOk = lastVerify.value === pwd ? lastVerify.ok : await verifyPassword(pwd);
+    lastVerify = { value: pwd, ok: passOk };
+
+    if (u === ADMIN_USER && passOk) {
       localStorage.removeItem('wmessage_admin_lock');
       sessionStorage.setItem(SESSION_KEY, '1');
+      errEl.textContent = '';
       enterPanel();
       return;
     }
