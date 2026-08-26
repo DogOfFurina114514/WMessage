@@ -65,8 +65,9 @@
     <p class="nf-footer">WMessage · 基于 Cloudflare 的即时通讯</p>
   </main>
   <script>
-    // 显示当前请求的路径，方便排查输入错误
-    document.getElementById('path').textContent = location.pathname;
+    // 显示当前请求的路径（去掉站点前缀 /WMessage），方便排查输入错误
+    const shown = location.pathname.replace(/^\/WMessage/, '') || '/';
+    document.getElementById('path').textContent = shown;
   </script>
 </body>
 </html>
