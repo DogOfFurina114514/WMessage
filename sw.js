@@ -1,5 +1,5 @@
 // WMessage Service Worker —— PWA 离线缓存
-const CACHE = 'wmessage-v1';
+const CACHE = 'wmessage-v2';
 const SHELL = [
   './',
   './index.html',
