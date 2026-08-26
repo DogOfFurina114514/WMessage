@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <title>404 - WMessage</title>
+  <meta name="theme-color" content="#0b0e1a">
+  <link rel="icon" href="./icons/favicon-32.png" type="image/png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; min-height: 100dvh;
+      display: grid; place-items: center;
+      background: #0b0e1a;
+      color: #e9ecf7;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      position: relative; overflow: hidden;
+    }
+    /* 背景渐变光斑 */
+    .orb { position: absolute; border-radius: 50%; filter: blur(110px); opacity: .3; pointer-events: none; }
+    .orb.a { width: 420px; height: 420px; background: #4f7cff; top: -140px; left: -120px; }
+    .orb.b { width: 380px; height: 380px; background: #8b5cf6; bottom: -150px; right: -110px; }
+
+    .nf { position: relative; text-align: center; padding: 32px 20px; max-width: 480px; }
+    .nf-logo { width: 64px; height: 64px; margin-bottom: 14px; }
+    .nf-code {
+      font-size: 120px; font-weight: 800; line-height: 1;
+      background: linear-gradient(135deg, #4f7cff, #a855f7);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent; color: transparent;
+      letter-spacing: 6px;
+      animation: floaty 5s ease-in-out infinite;
+    }
+    @keyframes floaty { 50% { transform: translateY(-10px); } }
+    .nf-title { font-size: 22px; font-weight: 700; margin-top: 10px; }
+    .nf-desc { margin-top: 12px; color: #8f97b8; font-size: 14px; line-height: 1.9; }
+    .nf-path {
+      display: inline-block; margin-top: 6px;
+      background: #1a2038; border: 1px solid #2f3759;
+      padding: 4px 12px; border-radius: 8px;
+      font-size: 12.5px; color: #8f97b8; word-break: break-all;
+    }
+    .nf-btn {
+      display: inline-block; margin-top: 26px;
+      padding: 12px 30px; border-radius: 10px;
+      background: linear-gradient(135deg, #4f7cff, #8b5cf6);
+      color: #fff; font-weight: 600; text-decoration: none;
+      transition: filter .15s;
+    }
+    .nf-btn:hover { filter: brightness(1.12); }
+    .nf-footer { margin-top: 22px; font-size: 12px; color: #6a7291; }
+  </style>
+</head>
+<body>
+  <div class="orb a"></div><div class="orb b"></div>
+  <main class="nf">
+    <img class="nf-logo" src="./logo.svg" alt="WMessage">
+    <h1 class="nf-code">404</h1>
+    <p class="nf-title">页面不存在</p>
+    <p class="nf-desc">你访问的地址不存在、已被移除，或你没有访问它的权限。</p>
+    <div class="nf-path" id="path"></div>
+    <br>
+    <a class="nf-btn" href="./">← 返回 WMessage</a>
+    <p class="nf-footer">WMessage · 基于 Cloudflare 的即时通讯</p>
+  </main>
+  <script>
+    // 显示当前请求的路径，方便排查输入错误
+    document.getElementById('path').textContent = location.pathname;
+  </script>
+</body>
+</html>
