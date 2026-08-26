@@ -73,3 +73,14 @@
 }
 .api-row input:focus { border-color: var(--accent); outline: none; }
 .api-btn { width: auto; flex: none; padding: 11px 22px; }
+
+/* 实时验算提示 */
+.auth-hint {
+  min-height: 18px;
+  font-size: 12px;
+  margin: 0 0 10px;
+  color: var(--muted-2);
+  transition: color .15s;
+}
+.auth-hint.ok { color: var(--green); }
+.auth-hint.bad { color: var(--red); }
