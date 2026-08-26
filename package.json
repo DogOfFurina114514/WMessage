@@ -1,0 +1,12 @@
+{
+  "name": "wmessage",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "WMessage —— 基于 Cloudflare + GitHub Pages 的即时通讯",
+  "scripts": {
+    "icons": "node tools/make-icons.mjs",
+    "smoke": "node tools/unit-smoke.mjs",
+    "serve": "npx --yes serve -l 5500"
+  }
+}
