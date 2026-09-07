@@ -3,8 +3,7 @@ import {
   getApiBase, getToken, setToken, getUser, setUser, clearAuth,
   getUnread, bumpUnread, resetUnread, getNotify, setNotify,
 } from './store.js';
-import * as api from './api.js';
-import { ChatSocket } from './ws.js';
+import * as api from './supabase.js';
 import { EMOJIS } from './emoji.js';
 import { $, el, toast, modal, avatarEl, formatTime, formatListTime, formatDay, dayKey, lightbox } from './ui.js';
 
@@ -83,8 +82,10 @@ async function boot() {
 /* ==================== 登录 / 注册 ==================== */
 
 function showAuth() {
-  state.ws && state.ws.close();
-  state.ws = null;
+  if (state.unsubRoom) {
+    state.unsubRoom();
+    state.unsubRoom = null;
+  }
   state.activeRoom = null;
   $app.innerHTML = `
     <div class="auth">
@@ -267,12 +268,10 @@ function enterApp() {
     setMobileView('chats');
     renderMobilePanel();
   }
-  // 探测能力
-  api.health().then((h) => {
-    state.uploadEnabled = !!h.upload;
-    const btn = $('#attachBtn');
-    if (btn) btn.hidden = !state.uploadEnabled;
-  }).catch(() => {});
+  // Supabase Storage 图片始终可用
+  state.uploadEnabled = true;
+  const attach = $('#attachBtn');
+  if (attach) attach.hidden = false;
   loadRooms();
 }
 
@@ -291,7 +290,7 @@ function renderMobilePanel() {
     );
   }
   const ver = $('#mVersion');
-  if (ver) ver.textContent = getApiBase().replace(/^https?:\/\//, '');
+  if (ver) ver.textContent = String(window.APP_CONFIG.supabaseUrl || '').replace(/^https?:\/\//, '');
   renderMobileDmList();
 }
 
@@ -403,9 +402,9 @@ function roomItem(r) {
 
 async function openRoom(room) {
   if (!room || (state.activeRoom && state.activeRoom.id === room.id)) return;
-  if (state.ws) {
-    state.ws.close();
-    state.ws = null;
+  if (state.unsubRoom) {
+    state.unsubRoom();
+    state.unsubRoom = null;
   }
   state.activeRoom = room;
   state.roomInfo = null;
@@ -432,6 +431,11 @@ async function openRoom(room) {
     toast(e.message, 'error');
   }
   connectRoom(room.id);
+  api.getMembers(room.id).then((members) => {
+    state.members = members || [];
+    renderMembers();
+    renderHeader();
+  }).catch(() => {});
   if (state.isMobile) setChatOpen(true);
 }
 
@@ -445,12 +449,8 @@ function roomCache(roomId) {
 }
 
 function connectRoom(roomId) {
-  const socket = new ChatSocket(roomId, {
-    onEvent: handleWsEvent,
-    onSessionExpired: () => logout('登录已失效，请重新登录'),
-  });
-  state.ws = socket;
-  socket.connect();
+  state.ws = null;
+  state.unsubRoom = api.subscribeRoom(roomId, (msg) => onIncomingMessage(msg));
 }
 
 function handleWsEvent(m) {
@@ -498,9 +498,9 @@ function renderHeader() {
   if (!room || !title) return;
   title.textContent = roomDisplayName(room);
   if (room.type === 'dm') {
-    sub.textContent = `私聊 · ${state.online.length} 在线`;
+    sub.textContent = '私聊';
   } else {
-    sub.textContent = `${state.members.length} 名成员 · ${state.online.length} 在线`;
+    sub.textContent = `${state.members.length} 名成员`;
   }
   const more = $('#moreBtn');
   if (more) more.style.visibility = room.type === 'channel' ? 'visible' : 'hidden';
@@ -510,7 +510,7 @@ function renderMembers() {
   const list = $('#membersList');
   if (!list) return;
   list.innerHTML = '';
-  $('#membersSub').textContent = `${state.members.length} 人 · ${state.online.length} 在线`;
+  $('#membersSub').textContent = `${state.members.length} 人`;
   if (!state.members.length) {
     list.append(el('div', { class: 'empty-list' }, '暂无成员'));
     return;
@@ -661,7 +661,7 @@ function systemLine(text) {
 
 async function loadOlder() {
   const room = state.activeRoom;
-  if (!room || !state.ws) return;
+  if (!room) return;
   const c = roomCache(room.id);
   if (c.loading || !c.hasMore || !c.list.length) return;
   c.loading = true;
@@ -745,10 +745,6 @@ function sendMessage(type, content) {
   const room = state.activeRoom;
   if (!room) return;
   if (type === 'text' && !content.trim()) return;
-  if (!state.ws || !state.ws.isOpen()) {
-    toast('正在连接服务器…');
-    return;
-  }
   const clientId = crypto.randomUUID();
   const text = type === 'text' ? content.trim().slice(0, 4000) : content;
   const msg = {
@@ -762,7 +758,16 @@ function sendMessage(type, content) {
   c.list.push(msg);
   appendMessageNode(msg);
   updateSidebarPreview(msg);
-  state.ws.send({ type: 'send', clientId, contentType: type === 'image' ? 'image' : 'text', content: text });
+  api.sendMessage(msg).catch((e) => {
+    toast(e.message || '发送失败', 'error');
+    const p = state.pending.get(clientId);
+    if (p) {
+      const idx = c.list.findIndex((x) => x.id === clientId);
+      if (idx >= 0) c.list.splice(idx, 1);
+      state.pending.delete(clientId);
+      if (state.activeRoom && state.activeRoom.id === room.id) renderAllMessages(room.id);
+    }
+  });
 }
 
 function showTyping(nickname) {
@@ -988,8 +993,10 @@ function confirmLeaveChannel() {
             const first = state.rooms.find((r) => r.type === 'channel') || state.rooms[0];
             if (first) openRoom(first);
             else {
-              state.ws && state.ws.close();
-              state.ws = null;
+              if (state.unsubRoom) {
+                state.unsubRoom();
+                state.unsubRoom = null;
+              }
               state.activeRoom = null;
               renderHeader();
               showEmpty('创建一个频道，或搜索用户开始私聊吧');
@@ -1143,7 +1150,6 @@ function bindAppEvents() {
   const input = $('#input');
   input.addEventListener('input', () => {
     autosize(input);
-    onTypingInput();
   });
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -1195,9 +1201,9 @@ function doSend() {
 function logout(reason = '') {
   if (!reason && !confirm('确定退出登录吗？')) return;
   clearAuth();
-  if (state.ws) {
-    state.ws.close();
-    state.ws = null;
+  if (state.unsubRoom) {
+    state.unsubRoom();
+    state.unsubRoom = null;
   }
   state.rooms = [];
   state.cache.clear();
