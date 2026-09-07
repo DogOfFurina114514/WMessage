@@ -1,0 +1,270 @@
+// WMessage 数据层 —— Supabase（认证 / 查询 / Realtime / Storage）
+// 接口签名与原 Cloudflare 版 api.js 保持一致，供 main.js 无缝切换
+// 依赖 index.html 中加载的 supabase-js（window.supabase）
+import { getUser } from './store.js';
+
+if (!window.supabase) throw new Error('supabase-js 未加载（检查 index.html CDN 引用）');
+const sb = window.supabase.createClient(
+  window.APP_CONFIG.supabaseUrl,
+  window.APP_CONFIG.supabaseKey,
+  { auth: { persistSession: true, autoRefreshToken: true } }
+);
+
+const AVATAR_COLORS = ['#4f7cff', '#8b5cf6', '#34d399', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16'];
+function pickColor(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
+
+function toUser(row) {
+  return row ? { id: row.id, username: row.username, nickname: row.nickname, avatarColor: row.avatar_color, createdAt: row.created_at } : null;
+}
+function toMsg(row) {
+  const u = row.users || {};
+  return {
+    id: row.id,
+    clientId: row.client_id || '',
+    roomId: row.room_id,
+    userId: row.user_id,
+    type: row.type,
+    content: row.content,
+    createdAt: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
+    username: u.username || '',
+    nickname: u.nickname || '',
+    avatarColor: u.avatar_color || '#4f7cff',
+  };
+}
+
+function authErr(error) {
+  const m = (error || {}).message || '操作失败';
+  const err = new Error(/Invalid login credentials/i.test(m) ? '用户名或密码错误' : m);
+  err.status = /invalid/i.test(m) ? 401 : 400;
+  return err;
+}
+
+function uid() {
+  return (sb.auth.getUser() && (sb.auth.getUser().then((r) => r.data.user, () => null))).then ? null : null;
+}
+
+async function currentUserId() {
+  const { data } = await sb.auth.getUser();
+  if (!data.user) throw Object.assign(new Error('登录已失效,请重新登录'), { status: 401 });
+  return data.user.id;
+}
+
+/* ==================== 认证（用户名 → email 映射 wmessage.local） ==================== */
+export async function login({ username, password }) {
+  const email = username + '@wmessage.local';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) throw authErr(error);
+  const { data: row, error: e2 } = await sb.from('users').select('*').eq('id', data.user.id).single();
+  if (e2 || !row) throw new Error('账号资料不存在,请重新注册');
+  return { user: toUser(row), token: data.session ? data.session.access_token : '' };
+}
+
+export async function register({ username, password, nickname }) {
+  const email = username + '@wmessage.local';
+  const dup = await sb.from('users').select('id').eq('username', username).maybeSingle();
+  if (dup.data) throw new Error('该用户名已被注册');
+  const { data, error } = await sb.auth.signUp({ email, password });
+  if (error) throw authErr(error);
+  const user = data.user;
+  if (!user) throw new Error('注册未完成(项目需关闭邮箱验证,请检查 Supabase 设置)');
+  const profile = {
+    id: user.id,
+    username,
+    nickname: (nickname || username).slice(0, 20),
+    avatar_color: pickColor(nickname || username),
+  };
+  const ins = await sb.from('users').insert(profile).select('*').single();
+  if (ins.error) {
+    await sb.auth.signOut();
+    throw new Error('该用户名已被注册');
+  }
+  return { user: toUser(ins.data), token: data.session ? data.session.access_token : '' };
+}
+
+export async function me() {
+  const id = await currentUserId();
+  const { data: row } = await sb.from('users').select('*').eq('id', id).single();
+  if (!row) throw Object.assign(new Error('登录已失效'), { status: 401 });
+  return { user: toUser(row) };
+}
+
+/* ==================== 会话 ==================== */
+export async function getRooms() {
+  const id = await currentUserId();
+  const { data: mem, error } = await sb
+    .from('members')
+    .select('joined_at, rooms(id,type,name,description,created_by,created_at)')
+    .eq('user_id', id);
+  if (error) throw new Error(error.message);
+  const rooms = [];
+  for (const m of mem || []) {
+    const r = m.rooms;
+    if (!r) continue;
+    const latest = await sb
+      .from('messages')
+      .select('id,type,content,created_at,users(nickname)')
+      .eq('room_id', r.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    let partner = null;
+    if (r.type === 'dm') {
+      const pm = await sb.from('members').select('user_id').eq('room_id', r.id).neq('user_id', id).limit(1).maybeSingle();
+      if (pm && pm.data) {
+        const pu = await sb.from('users').select('id,username,nickname,avatar_color').eq('id', pm.data.user_id).single();
+        partner = pu.data ? { id: pu.data.id, username: pu.data.username, nickname: pu.data.nickname, avatarColor: pu.data.avatar_color } : null;
+      }
+    }
+    rooms.push({
+      id: r.id,
+      type: r.type,
+      name: r.name || '',
+      description: r.description || '',
+      joinedAt: m.joined_at ? new Date(m.joined_at).getTime() : 0,
+      lastMessage: latest.data ? latest.data.content : null,
+      lastMessageType: latest.data ? latest.data.type : null,
+      lastMessageAt: latest.data ? new Date(latest.data.created_at).getTime() : null,
+      lastSender: latest.data && latest.data.users ? latest.data.users.nickname : null,
+      partner,
+    });
+  }
+  return { rooms };
+}
+
+export async function getChannels() {
+  const id = await currentUserId();
+  const { data, error } = await sb.from('rooms').select('id,name,description,created_at').eq('type', 'channel').order('created_at');
+  if (error) throw new Error(error.message);
+  const channels = [];
+  for (const c of data || []) {
+    const cnt = await sb.from('members').select('user_id', { count: 'exact', head: true }).eq('room_id', c.id);
+    const joined = await sb.from('members').select('user_id').eq('room_id', c.id).eq('user_id', id).maybeSingle();
+    channels.push({
+      id: c.id, name: c.name, description: c.description || '',
+      createdAt: c.created_at, memberCount: cnt.count || 0, joined: !!(joined.data),
+    });
+  }
+  return { channels };
+}
+
+export async function createRoom(name, description) {
+  const id = await currentUserId();
+  const room = { id: crypto.randomUUID(), type: 'channel', name, description: description || '', created_by: id, created_at: new Date().toISOString() };
+  const ins = await sb.from('rooms').insert(room).select('*').single();
+  if (ins.error) throw new Error(ins.error.message);
+  await sb.from('members').insert({ room_id: room.id, user_id: id });
+  return { room: { id: room.id, type: 'channel', name: room.name, description: room.description } };
+}
+
+export async function joinRoom(roomId) {
+  const id = await currentUserId();
+  const j = await sb.from('members').insert({ room_id: roomId, user_id: id });
+  if (j.error) throw new Error(j.error.message);
+  return {};
+}
+
+export async function leaveRoom(roomId) {
+  const id = await currentUserId();
+  const d = await sb.from('members').delete().eq('room_id', roomId).eq('user_id', id);
+  if (d.error) throw new Error(d.error.message);
+  return {};
+}
+
+export async function getMessages(roomId, { beforeTs, beforeId, limit = 50 } = {}) {
+  let q = sb
+    .from('messages')
+    .select('id,room_id,user_id,client_id,type,content,created_at,users(nickname,avatar_color,username)')
+    .eq('room_id', roomId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (beforeTs) q = q.lt('created_at', new Date(beforeTs).toISOString());
+  const { data, error } = await q;
+  if (error) throw new Error(error.message);
+  return { messages: (data || []).reverse().map(toMsg) };
+}
+
+export async function searchUsers(q) {
+  const id = await currentUserId();
+  const { data, error } = await sb
+    .from('users')
+    .select('id,username,nickname,avatar_color')
+    .neq('id', id)
+    .or(`username.ilike.%${q}%,nickname.ilike.%${q}%`)
+    .limit(20);
+  if (error) throw new Error(error.message);
+  return { users: (data || []).map((u) => ({ id: u.id, username: u.username, nickname: u.nickname, avatarColor: u.avatar_color })) };
+}
+
+export async function startDm(targetId) {
+  const id = await currentUserId();
+  const roomId = 'dm_' + [id, targetId].sort().join('_');
+  const exist = await sb.from('rooms').select('id').eq('id', roomId).maybeSingle();
+  if (!exist.data) {
+    const ins = await sb.from('rooms').insert({ id: roomId, type: 'dm', created_by: id }).select('id,type').single();
+    if (ins.error) throw new Error(ins.error.message);
+  }
+  await sb.from('members').insert([{ room_id: roomId, user_id: id }, { room_id: roomId, user_id: targetId }]).select();
+  return { room: { id: roomId, type: 'dm' } };
+}
+
+export async function getMembers(roomId) {
+  const { data, error } = await sb.from('members').select('user_id,users(id,username,nickname,avatar_color)').eq('room_id', roomId);
+  if (error) throw new Error(error.message);
+  return (data || []).map((m) => (m.users ? { id: m.users.id, username: m.users.username, nickname: m.users.nickname, avatarColor: m.users.avatar_color } : null)).filter(Boolean);
+}
+
+/* ==================== 消息发送 ==================== */
+export async function sendMessage(msg) {
+  const ins = await sb
+    .from('messages')
+    .insert({
+      room_id: msg.roomId,
+      user_id: msg.userId,
+      client_id: msg.clientId,
+      type: msg.type,
+      content: msg.content,
+    })
+    .select('id,room_id,user_id,client_id,type,content,created_at,users(nickname,avatar_color,username)')
+    .single();
+  if (ins.error) throw new Error(ins.error.message);
+  return toMsg(ins.data);
+}
+
+/* ==================== Realtime 订阅 ==================== */
+export function subscribeRoom(roomId, onMessage) {
+  const channel = sb
+    .channel('room:' + roomId)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, async (payload) => {
+      const row = payload.new;
+      if (!row.user_id || !row.id) return;
+      let msg;
+      if (row.user_id === (getUser() || {}).id) {
+        msg = toMsg({ ...row, users: { nickname: (getUser() || {}).nickname, avatar_color: (getUser() || {}).avatarColor, username: (getUser() || {}).username } });
+      } else {
+        const u = await sb.from('users').select('nickname,avatar_color,username').eq('id', row.user_id).single();
+        msg = toMsg({ ...row, users: u.data || {} });
+      }
+      onMessage(msg);
+    })
+    .subscribe();
+  return () => sb.removeChannel(channel);
+}
+
+/* ==================== 图片（Storage） ==================== */
+export async function upload(file) {
+  const id = await currentUserId();
+  const path = `imgs/${id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}${file.name ? '' : '.png'}`;
+  const { error } = await sb.storage.from('wmessage-images').upload(path, file, { contentType: file.type, upsert: false });
+  if (error) throw new Error(error.message || '上传失败');
+  const { data } = sb.storage.from('wmessage-images').getPublicUrl(path);
+  return data.publicUrl;
+}
+
+/* ==================== 会话(旧版兼容占位) ==================== */
+export function getToken() {
+  return '';
+}
