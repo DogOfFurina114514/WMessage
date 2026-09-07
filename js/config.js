@@ -1,7 +1,7 @@
-// WMessage 前端配置
-// 后端 API 地址：Cloudflare Worker（已部署，见 backend/）
-// 登录页右下角的「⚙ API 设置」也可以临时修改（保存在浏览器本地，优先于这里）
+// WMessage 前端配置 —— Supabase 项目信息（publishable key 配合 RLS 安全，前端公开使用）
+// 项目：WMessageBackend（私有仓库），密钥仅用于前端，服务端 secret 严禁引用
 window.APP_CONFIG = {
-  apiBase: 'https://wmessage-backend.wu-20111229.workers.dev',
+  supabaseUrl: 'https://ztqoyyvltlkvyclofysw.supabase.co',
+  supabaseKey: 'sb_publishable_ZJP9l3ifDKYPh5rUQAKtiw_FdpqCegp',
   appName: 'WMessage',
 };
