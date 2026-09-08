@@ -89,8 +89,8 @@ function showAuth() {
   $app.innerHTML = `
     <div class="auth">
       <div class="orb a"></div><div class="orb b"></div>
-      <button class="icon-btn win-close" id="winClose" type="button" hidden title="关闭"><svg class="ic"><use href="#i-close"></use></svg></button>
       <div class="auth-card">
+        <button class="icon-btn win-close" id="winClose" type="button" hidden title="关闭"><svg class="ic"><use href="#i-close"></use></svg></button>
         <div class="auth-brand">
           <img src="./logo.svg" alt="WMessage">
           <h1>WMessage</h1>
