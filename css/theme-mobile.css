@@ -74,9 +74,13 @@ html.theme-mobile .send-mini {
   border-radius: 50%;
   background: var(--bubble-own);
   display: grid; place-items: center;
-  font-size: 0;
 }
-html.theme-mobile .send-mini::after { content: '➤'; font-size: 16px; color: #fff; }
+html.theme-mobile .send-mini .send-ic {
+  display: block;
+  width: 20px; height: 20px;
+  color: #ffffff;
+}
+html.theme-mobile .send-mini .send-label { display: none; }
 
 /* 底部悬浮导航（InstallX Revived / Miuix 式） */
 html.theme-mobile .floatnav {
@@ -105,11 +109,12 @@ html.theme-mobile .fn-item {
   transition: color .2s;
 }
 html.theme-mobile .fn-item .fn-icon {
-  font-size: 20px; line-height: 1;
   padding: 6px 16px;
   border-radius: 20px;
   transition: background .2s, transform .2s;
+  display: grid; place-items: center;
 }
+html.theme-mobile .fn-item .fn-icon .ic { width: 22px; height: 22px; }
 html.theme-mobile .fn-item .fn-label { font-size: 10.5px; font-weight: 600; letter-spacing: .3px; }
 html.theme-mobile .fn-item.active { color: var(--primary); }
 html.theme-mobile .fn-item.active .fn-icon {
