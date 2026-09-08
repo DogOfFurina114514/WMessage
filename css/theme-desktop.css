@@ -38,6 +38,8 @@ html.theme-desktop .auth-card {
   box-shadow: none;
   background: var(--bg);          /* 与窗口背景完全统一 */
   backdrop-filter: none;
+  width: 400px !important;        /* 桌面端卡片固定宽度，不受窗口大小挤压 */
+  min-width: 400px;
 }
 html.theme-desktop .app { background: var(--bg); }
 
