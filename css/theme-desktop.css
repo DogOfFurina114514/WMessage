@@ -107,6 +107,17 @@ html.theme-desktop ::-webkit-scrollbar-thumb {
   border-radius: 6px;
 }
 
+/* 无边框窗口：登录页可拖动；控件区域不拖拽 */
+html.theme-desktop .auth { -webkit-app-region: drag; }
+html.theme-desktop .auth input,
+html.theme-desktop .auth button,
+html.theme-desktop .auth .auth-tabs,
+html.theme-desktop .auth .auth-brand { -webkit-app-region: no-drag; }
+html.theme-desktop .main-header,
+html.theme-desktop .side-head { -webkit-app-region: drag; }
+html.theme-desktop .main-header button,
+html.theme-desktop .side-head button { -webkit-app-region: no-drag; }
+
 /* 主按钮 */
 html.theme-desktop .btn-primary {
   background: linear-gradient(135deg, #2b88d8, #1364b4);
