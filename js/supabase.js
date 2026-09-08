@@ -78,9 +78,12 @@ export async function login({ account, password }) {
   return { user: toUser(row), token: data.session ? data.session.access_token : '' };
 }
 
+// 邮箱验证成功后的回跳地址（官方验证页处理完毕后重定向到此页）
+const EMAIL_REDIRECT = 'https://dogoffurina114514.github.io/WMessage/auth.html';
+
 // 重发验证邮件（signup 类型）
 export async function resendVerification(email) {
-  const { error } = await sb.auth.resend({ type: 'signup', email });
+  const { error } = await sb.auth.resend({ type: 'signup', email, options: { redirectTo: EMAIL_REDIRECT } });
   if (error) {
     if (/rate limit/i.test(error.message)) throw new Error('发送太频繁，请稍后再试');
     throw new Error(error.message || '重发失败');
@@ -97,7 +100,7 @@ export async function register({ username, email, password, nickname }) {
   if (dupU.data) throw new Error('该用户名已被使用');
   const dupE = await sb.from('users').select('id').eq('email', mail).maybeSingle();
   if (dupE.data) throw new Error('该邮箱已被注册');
-  const { data, error } = await sb.auth.signUp({ email: mail, password });
+  const { data, error } = await sb.auth.signUp({ email: mail, password, options: { emailRedirectTo: EMAIL_REDIRECT } });
   if (error) {
     const m = error.message || '';
     if (/already been registered/i.test(m)) throw new Error('该邮箱已被注册');
