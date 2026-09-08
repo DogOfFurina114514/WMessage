@@ -157,11 +157,58 @@ function showAuth() {
       state.user = data.user;
       enterApp();
     } catch (err) {
-      $('#authError').textContent = err.message;
+      if (err.code === 'EMAIL_NOT_CONFIRMED') {
+        showVerifyModal(email);
+      } else {
+        $('#authError').textContent = err.message;
+      }
     } finally {
       btn.disabled = false;
     }
   });
+}
+
+/* ==================== 邮箱未验证弹窗（重发 + 60 秒冷却） ==================== */
+const RESEND_COOLDOWN = 60 * 1000;
+const RESEND_KEY = 'wmessage_resend_at';
+
+function showVerifyModal(email) {
+  const cooldownBox = el('div', { style: 'margin-top:10px;font-size:12px;color:var(--muted-2)' });
+  const resendBtn = el('button', { type: 'button', class: 'btn btn-primary', style: 'margin-top:14px' }, '重发验证邮件');
+  const body = el('div', null,
+    el('div', { style: 'color:var(--text);line-height:1.8;font-size:14px' },
+      `验证邮件已发送至 <b>${email}</b>。<br>请到邮箱（含垃圾箱）查看，点击「验证邮箱并登录」完成验证后再来登录。`),
+    cooldownBox,
+    resendBtn
+  );
+  const m = modal({ title: '邮箱尚未验证', body, actions: [{ label: '我知道了', onClick: () => {} }] });
+
+  resendBtn.addEventListener('click', async () => {
+    resendBtn.disabled = true;
+    try {
+      await api.resendVerification(email);
+      localStorage.setItem(RESEND_KEY, String(Date.now()));
+      cooldownBox.textContent = '验证邮件已重新发送，请查收。';
+      toast('验证邮件已重新发送');
+    } catch (e) {
+      cooldownBox.textContent = e.message;
+    }
+    tick();
+  });
+
+  function tick() {
+    const last = parseInt(localStorage.getItem(RESEND_KEY) || '0', 10);
+    const remain = Math.ceil((last + RESEND_COOLDOWN - Date.now()) / 1000);
+    if (remain > 0) {
+      resendBtn.disabled = true;
+      resendBtn.textContent = `${remain} 秒后可重发`;
+      setTimeout(tick, 1000);
+    } else {
+      resendBtn.disabled = false;
+      resendBtn.textContent = '重发验证邮件';
+    }
+  }
+  tick();
 }
 
 /* ==================== 主界面 ==================== */
