@@ -27,7 +27,7 @@ function write(key, value) {
 export function getApiBase() {
   const custom = (localStorage.getItem(K.api) || '').replace(/\/+$/, '');
   if (custom) return custom;
-  return String(window.APP_CONFIG.apiBase || 'https://example.workers.dev').replace(/\/+$/, '');
+  return String(window.APP_CONFIG.apiBase || 'https://example.com').replace(/\/+$/, '');
 }
 
 export function setApiBase(v) {
