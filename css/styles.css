@@ -1,8 +1,6 @@
 /* ============ WMessage 基础样式（布局/几何，颜色由三套主题覆盖）============
-   主题通过 <html> 上的 class 切换：
-   theme-web      → css/theme-web.css      （dogoffurinagi 玻璃拟态风）
-   theme-mobile   → css/theme-mobile.css   （Material Design 3 + Telegram 布局 + 悬浮底栏）
-   theme-desktop  → css/theme-desktop.css  （WinUI3 / Fluent Design 风）
+   主题通过 <html> 上的 class 切换：theme-web / theme-mobile / theme-desktop
+   （对应 css/theme-*.css，平台自动检测）
 */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
