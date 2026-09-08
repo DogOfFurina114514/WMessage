@@ -89,6 +89,7 @@ function showAuth() {
   $app.innerHTML = `
     <div class="auth">
       <div class="orb a"></div><div class="orb b"></div>
+      <button class="icon-btn win-close" id="winClose" type="button" hidden title="关闭"><svg class="ic"><use href="#i-close"></use></svg></button>
       <div class="auth-card">
         <div class="auth-brand">
           <img src="./logo.svg" alt="WMessage">
@@ -145,6 +146,15 @@ function showAuth() {
   if (location.hash === '#register') {
     const reg = $app.querySelector('.tab[data-mode="register"]');
     if (reg) reg.click();
+  }
+
+  // 桌面客户端右上角关闭按钮（无边框窗口）
+  if (window.desktop && window.desktop.closeWindow) {
+    const winClose = $('#winClose');
+    if (winClose) {
+      winClose.hidden = false;
+      winClose.addEventListener('click', () => window.desktop.closeWindow());
+    }
   }
 
   $('#authForm').addEventListener('submit', async (e) => {
@@ -324,6 +334,8 @@ function appTemplate() {
 }
 
 function enterApp() {
+  // 桌面客户端：登录成功后展开为全尺寸聊天窗口
+  if (window.desktop && window.desktop.expandWindow) window.desktop.expandWindow();
   $app.innerHTML = appTemplate();
   state.rooms = [];
   state.cache.clear();
