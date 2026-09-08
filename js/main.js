@@ -30,7 +30,7 @@ const state = {
 /* ==================== 平台检测与主题 ====================
    桌面客户端 → theme-desktop；手机/PWA → theme-mobile；桌面浏览器 → theme-web */
 function detectPlatform() {
-  const isElectron = !!(window.desktop && window.desktop.isDesktop);
+  const isElectron = !!(window.desktop && window.desktop.isDesktop) || !!(window.chrome && window.chrome.webview);
   const isMobile = !isElectron && (
     matchMedia('(max-width: 820px)').matches ||
     /Mobi|Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)
@@ -41,6 +41,17 @@ function detectPlatform() {
   state.isElectron = isElectron;
 }
 detectPlatform();
+
+// 桌面窗口调用：Electron 或 WebView2 桥接
+function desktopCall(action) {
+  if (window.desktop && window.desktop.isDesktop) {
+    if (action === 'close' && window.desktop.closeWindow) return window.desktop.closeWindow();
+    if (action === 'expand' && window.desktop.expandWindow) return window.desktop.expandWindow();
+  }
+  if (window.chrome && window.chrome.webview) {
+    try { window.chrome.webview.postMessage({ action }); } catch { /* 忽略 */ }
+  }
+}
 
 function setMobileView(view) {
   state.mobileView = view;
@@ -148,18 +159,23 @@ function showAuth() {
     if (reg) reg.click();
   }
 
+  // 桌面端窗口拖拽（标题栏/空白区域按住拖动）
+  document.addEventListener('mousedown', (e) => {
+    if (!state.isElectron) return;
+    const t = e.target;
+    if (t && (t.closest('button, input, textarea, a, label'))) return;
+    if (t && (t.closest('.auth, .main-header, .side-head, .mview-head'))) {
+      e.preventDefault();
+      desktopCall('drag');
+    }
+  });
+
   // 桌面客户端右上角关闭按钮（无边框窗口）
-  if (window.desktop && window.desktop.isDesktop) {
+  if (state.isElectron) {
     const winClose = $('#winClose');
     if (winClose) {
       winClose.hidden = false;
-      winClose.addEventListener('click', () => {
-        if (window.desktop && window.desktop.closeWindow) {
-          window.desktop.closeWindow();
-        } else {
-          try { window.close(); } catch { /* 忽略 */ }
-        }
-      });
+      winClose.addEventListener('click', () => desktopCall('close'));
     }
   }
 
@@ -341,7 +357,7 @@ function appTemplate() {
 
 function enterApp() {
   // 桌面客户端：登录成功后展开为全尺寸聊天窗口
-  if (window.desktop && window.desktop.expandWindow) window.desktop.expandWindow();
+  desktopCall('expand');
   $app.innerHTML = appTemplate();
   state.rooms = [];
   state.cache.clear();
