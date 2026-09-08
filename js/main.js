@@ -134,6 +134,11 @@ function showAuth() {
       $('#authError').textContent = '';
     });
   });
+  // 深链：#register（如邀请邮件）直达注册标签
+  if (location.hash === '#register') {
+    const reg = $app.querySelector('.tab[data-mode="register"]');
+    if (reg) reg.click();
+  }
 
   $('#authForm').addEventListener('submit', async (e) => {
     e.preventDefault();
