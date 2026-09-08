@@ -1,7 +1,7 @@
 {
   "name": "WMessage",
   "short_name": "WMessage",
-  "description": "基于 Cloudflare 的实时即时通讯",
+  "description": "轻快、私密的实时即时通讯",
   "lang": "zh-CN",
   "start_url": "./",
   "scope": "./",
