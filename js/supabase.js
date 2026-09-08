@@ -53,8 +53,20 @@ async function currentUserId() {
   return data.user.id;
 }
 
-/* ==================== 认证（邮箱 + 密码，邮箱验证开启） ==================== */
-export async function login({ email, password }) {
+/* ==================== 认证（邮箱 + 密码；登录支持用户名/邮箱） ==================== */
+export async function login({ account, password }) {
+  // 账号输入：直接是邮箱，或用户名（当前用户名=注册邮箱；也支持未来纯用户名）
+  let email = String(account || '').trim();
+  if (!email.includes('@')) {
+    const found = await sb.from('users').select('username').eq('username', email).maybeSingle();
+    if (!found.data) {
+      const byNick = await sb.from('users').select('username').ilike('nickname', email).limit(1).maybeSingle();
+      if (!byNick.data) throw new Error('该用户名或邮箱不存在,请核对后重试');
+      email = byNick.data.username;
+    } else {
+      email = found.data.username;
+    }
+  }
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
   if (error) {
     const m = error.message || '';
