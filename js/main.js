@@ -176,7 +176,7 @@ function appTemplate() {
       <div class="side-head">
         <div class="brand"><img src="./logo.svg" alt=""><span>WMessage</span></div>
         <div class="side-actions">
-          <button class="icon-btn" id="notifyBtn" title="桌面通知">🔔</button>
+          <button class="icon-btn" id="notifyBtn" title="桌面通知"><svg class="ic"><use href="#i-bell"></use></svg></button>
         </div>
       </div>
       <div class="search-box">
@@ -186,7 +186,7 @@ function appTemplate() {
       <div class="room-list" id="roomList"></div>
       <div class="side-actions-row">
         <button class="btn btn-ghost" id="newChannelBtn">＋ 新建频道</button>
-        <button class="btn btn-ghost" id="discoverBtn">🌐 发现</button>
+        <button class="btn btn-ghost" id="discoverBtn"><svg class="ic ic-sm"><use href="#i-compass"></use></svg> 发现</button>
       </div>
       <div class="side-user" id="userChip" title="点击退出登录"></div>
     </aside>
@@ -194,14 +194,14 @@ function appTemplate() {
 
     <main class="main">
       <header class="main-header">
-        <button class="icon-btn back" id="backBtn">☰</button>
+        <button class="icon-btn back" id="backBtn"><svg class="ic"><use href="#i-menu"></use></svg></button>
         <div class="room-title-wrap">
           <div class="room-title" id="roomTitle">WMessage</div>
           <div class="room-sub" id="roomSub">选择一个会话开始聊天</div>
         </div>
         <div class="header-actions">
-          <button class="icon-btn" id="membersBtn" title="成员列表">👥</button>
-          <button class="icon-btn" id="moreBtn" title="更多">⋮</button>
+          <button class="icon-btn" id="membersBtn" title="成员列表"><svg class="ic"><use href="#i-members"></use></svg></button>
+          <button class="icon-btn" id="moreBtn" title="更多"><svg class="ic"><use href="#i-more"></use></svg></button>
           <div class="more-pop" id="morePop" hidden></div>
         </div>
       </header>
@@ -212,9 +212,9 @@ function appTemplate() {
       <div class="typing" id="typing"></div>
       <footer class="composer">
         <textarea id="input" rows="1" placeholder="输入消息，Enter 发送，Shift+Enter 换行"></textarea>
-        <button class="icon-btn" id="emojiBtn" title="表情" type="button">😀</button>
-        <button class="icon-btn" id="attachBtn" title="发送图片" type="button" hidden>🖼️</button>
-        <button class="btn btn-primary send-mini" id="sendBtn" type="button">发送</button>
+        <button class="icon-btn" id="emojiBtn" title="表情" type="button"><svg class="ic"><use href="#i-smile"></use></svg></button>
+        <button class="icon-btn" id="attachBtn" title="发送图片" type="button" hidden><svg class="ic"><use href="#i-image"></use></svg></button>
+        <button class="btn btn-primary send-mini" id="sendBtn" type="button"><svg class="ic send-ic"><use href="#i-send"></use></svg><span class="send-label">发送</span></button>
         <input type="file" id="fileInput" accept="image/*" hidden>
       </footer>
       <div class="emoji-panel" id="emojiPanel"></div>
@@ -223,7 +223,7 @@ function appTemplate() {
     <aside class="members" id="members">
       <div class="members-head">
         <span>成员 <span class="sub" id="membersSub"></span></span>
-        <button class="icon-btn" id="membersClose">✕</button>
+        <button class="icon-btn" id="membersClose"><svg class="ic"><use href="#i-close"></use></svg></button>
       </div>
       <div class="members-list" id="membersList"></div>
     </aside>
@@ -234,7 +234,7 @@ function appTemplate() {
         <div class="mview-head">
           <div class="mview-title">联系人</div>
           <div class="mview-actions">
-            <button class="icon-btn" id="mDiscoverBtn" title="发现频道">🧭</button>
+            <button class="icon-btn" id="mDiscoverBtn" title="发现频道"><svg class="ic"><use href="#i-compass"></use></svg></button>
           </div>
         </div>
         <div class="search-box">
@@ -247,18 +247,18 @@ function appTemplate() {
         <div class="mview-head"><div class="mview-title">设置</div></div>
         <div class="mprofile" id="mProfile"></div>
         <div class="msetting-list">
-          <div class="msetting-item" id="mNotifyBtn"><span class="micon">🔔</span> 桌面通知 <span class="right" id="mNotifyState">未开启</span></div>
-          <div class="msetting-item" id="mVersionItem"><span class="micon">ℹ️</span> API 地址 <span class="right" id="mVersion"></span></div>
-          <div class="msetting-item" id="mLogoutBtn"><span class="micon">🚪</span> 退出登录 <span class="right">›</span></div>
+          <div class="msetting-item" id="mNotifyBtn"><span class="micon"><svg class="ic"><use href="#i-bell"></use></svg></span> 桌面通知 <span class="right" id="mNotifyState">未开启</span></div>
+          <div class="msetting-item" id="mVersionItem"><span class="micon"><svg class="ic"><use href="#i-info"></use></svg></span> API 地址 <span class="right" id="mVersion"></span></div>
+          <div class="msetting-item" id="mLogoutBtn"><span class="micon"><svg class="ic"><use href="#i-logout"></use></svg></span> 退出登录 <span class="right">›</span></div>
         </div>
       </section>
     </div>
 
     <!-- 悬浮底栏（InstallerX Revived / Miuix 式浮动导航） -->
     <nav class="floatnav" id="floatNav">
-      <button type="button" class="fn-item active" data-view="chats"><span class="fn-icon">💬</span><span class="fn-label">会话</span></button>
-      <button type="button" class="fn-item" data-view="contacts"><span class="fn-icon">👥</span><span class="fn-label">联系人</span></button>
-      <button type="button" class="fn-item" data-view="settings"><span class="fn-icon">⚙️</span><span class="fn-label">设置</span></button>
+      <button type="button" class="fn-item active" data-view="chats"><span class="fn-icon"><svg class="ic"><use href="#i-chat"></use></svg></span><span class="fn-label">会话</span></button>
+      <button type="button" class="fn-item" data-view="contacts"><span class="fn-icon"><svg class="ic"><use href="#i-members"></use></svg></span><span class="fn-label">联系人</span></button>
+      <button type="button" class="fn-item" data-view="settings"><span class="fn-icon"><svg class="ic"><use href="#i-gear"></use></svg></span><span class="fn-label">设置</span></button>
     </nav>
   </div>`;
 }
@@ -544,7 +544,9 @@ function showEmpty(text) {
   if (!msgs) return;
   msgs.innerHTML = '';
   msgs.append(el('div', { class: 'empty' },
-    el('div', null, el('div', { class: 'big' }, '💬'), el('div', null, text))));
+    el('div', null,
+      el('div', { class: 'big' }, '<svg class="ic"><use href="#i-chat"></use></svg>'),
+      el('div', null, text))));
 }
 
 function imgSrc(path) {
