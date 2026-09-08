@@ -3,7 +3,7 @@
 //       直接输入 control/index.html 也只能看到空页面并被打回 signin.html。
 const SESSION_KEY = 'wmessage_admin_session';
 
-// Supabase 项目 URL（来自前端配置），系统状态用于探测其连通性
+// 后端服务 URL（来自前端配置），系统状态用于探测其连通性
 function getApiBase() {
   return String(window.APP_CONFIG.supabaseUrl || '').replace(/\/+$/, '');
 }
@@ -25,19 +25,19 @@ if (sessionStorage.getItem(SESSION_KEY) !== '1') {
       </header>
       <main class="admin-main">
         <section class="admin-card">
-          <h2>后端状态（Supabase）</h2>
+          <h2>后端状态</h2>
           <div id="healthBox" class="admin-muted">检测中…</div>
         </section>
         <section class="admin-card">
           <h2>说明</h2>
-          <p class="admin-tip">后端为私有仓库 <code>DogOfFurina114514/WMessageBackend</code> 的 Supabase 项目;本面板仅展示当前配置的连通状态(URL 来自 <code>js/config.js</code>)。</p>
+          <p class="admin-tip">后端为私有服务；本面板仅展示当前配置的服务连通状态。</p>
         </section>
         <section class="admin-card">
           <h2>使用说明</h2>
           <ul class="admin-tip">
             <li>登录入口：<code>https://dogoffurina114514.github.io/WMessage/control/signin.html</code></li>
             <li>面板主页需登录后进入，直接访问 <code>control/index.html</code> 会被拦截回登录页。</li>
-            <li>账号密码为单向加密存储，仅在登录时验算（PBKDF2-SHA256，15 万次迭代）。</li>
+            <li>账号密码为单向加密存储，仅在登录时验算。</li>
           </ul>
         </section>
       </main>
@@ -51,7 +51,7 @@ if (sessionStorage.getItem(SESSION_KEY) !== '1') {
   });
 }
 
-/* ---------------- 系统状态（Supabase 连通性） ---------------- */
+/* ---------------- 系统状态（后端连通性） ---------------- */
 async function checkHealth() {
   const box = $('#healthBox');
   if (!box) return;
@@ -61,9 +61,9 @@ async function checkHealth() {
   try {
     const res = await fetch(base, { signal: AbortSignal.timeout(12000) });
     box.innerHTML = res.ok
-      ? `<span class="ok">✔ Supabase 可访问</span> · ${base}`
-      : `项目地址返回 HTTP ${res.status}（${base}）`;
+      ? `<span class="ok">✔ 服务可访问</span> · ${base}`
+      : `服务地址返回 HTTP ${res.status}（${base}）`;
   } catch {
-    box.textContent = `无法连接 Supabase: ${base}（网络受限或地址不正确）`;
+    box.textContent = `无法连接后端服务: ${base}（网络受限或地址不正确）`;
   }
 }
