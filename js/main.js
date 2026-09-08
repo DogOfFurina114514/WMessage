@@ -167,10 +167,11 @@ function showAuth() {
       $('#authSubmit').textContent = mode === 'login' ? '登 录' : '注 册';
       $('#authTip').textContent = mode === 'login' ? '还没有账号？点击「注册」创建' : '已有账号？点击「登录」';
       $('#authError').textContent = '';
+      setTimeout(reportSize, 150);
+      setTimeout(reportSize, 350);
     });
-    setTimeout(reportSize, 120);
   });
-  setTimeout(reportSize, 60);
+
   // 深链：#register（如邀请邮件）直达注册标签
   if (location.hash === '#register') {
     const reg = $app.querySelector('.tab[data-mode="register"]');
@@ -196,6 +197,11 @@ function showAuth() {
       winClose.addEventListener('click', () => desktopCall('close'));
     }
   }
+
+  // 桌面端：初始布局稳定后上报尺寸（窗口自动贴合登录卡片）
+  setTimeout(reportSize, 150);
+  setTimeout(reportSize, 400);
+  setTimeout(reportSize, 800);
 
   $('#authForm').addEventListener('submit', async (e) => {
     e.preventDefault();
