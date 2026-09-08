@@ -28,6 +28,16 @@ html.theme-desktop, html.theme-desktop body {
   --font: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, 'Microsoft YaHei', sans-serif;
 }
 
+/* 无边框透明窗口：桌面客户端窗口背景透明，只渲染内容本体（登录卡片/聊天界面） */
+html.theme-desktop body { background: transparent !important; }
+html.theme-desktop .auth { padding: 0; background: none; }
+html.theme-desktop .auth .orb { display: none; }
+html.theme-desktop .auth-card {
+  border-radius: 18px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+}
+html.theme-desktop .app { background: var(--bg); }
+
 /* 背景：细微层次渐变 + 顶部光晕 */
 html.theme-desktop body {
   background:
