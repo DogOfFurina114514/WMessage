@@ -2,6 +2,7 @@
 // 默认加载前端页面；可用环境变量 WMESSAGE_URL 或 --url= 参数覆盖
 const { app, BrowserWindow, shell } = require('electron');
 const path = require('path');
+const fs = require('node:fs');
 
 const DEFAULT_URL = 'https://dogoffurina114514.github.io/WMessage/';
 const argUrl = process.argv.find((a) => a.startsWith('--url='));
@@ -11,13 +12,20 @@ const APP_URL = (argUrl ? argUrl.slice(6) : process.env.WMESSAGE_URL) || DEFAULT
 //   data/   ← 应用数据（登录会话、本地存储）
 //   cache/  ← 缓存
 //   temp/   ← 临时文件
-// electron-builder portable 会注入 PORTABLE_EXECUTABLE_DIR（exe 所在目录）
-if (process.env.PORTABLE_EXECUTABLE_DIR) {
-  const base = process.env.PORTABLE_EXECUTABLE_DIR;
-  app.setPath('userData', path.join(base, 'data'));
-  app.setPath('sessionData', path.join(base, 'data'));
-  app.setPath('cache', path.join(base, 'cache'));
-  app.setPath('temp', path.join(base, 'temp'));
+// 判定：electron-builder portable 注入 PORTABLE_EXECUTABLE_DIR；
+//       手动组装版本 exe 名为 WMessage.exe（dev 时 exe 为 electron，不误判）
+const portableBase = process.env.PORTABLE_EXECUTABLE_DIR ||
+  (/^wmessage\./i.test(path.basename(process.execPath || '')) ? path.dirname(process.execPath) : null);
+if (portableBase) {
+  const mk = (p) => { try { fs.mkdirSync(p, { recursive: true }); } catch { /* 只读目录时忽略 */ } };
+  const data = path.join(portableBase, 'data');
+  const cache = path.join(portableBase, 'cache');
+  const temp = path.join(portableBase, 'temp');
+  mk(data); mk(cache); mk(temp);
+  app.setPath('userData', data);
+  app.setPath('sessionData', data);
+  app.setPath('cache', cache);
+  app.setPath('temp', temp);
 }
 
 function createWindow() {
