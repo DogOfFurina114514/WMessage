@@ -12,62 +12,44 @@
   <style>
     .auth-result { position: relative; z-index: 2; text-align: center; padding: 40px 20px; }
     .auth-result .mark { width: 110px; height: 110px; margin: 0 auto 22px; display: block; }
-    .auth-result h1 { font-size: 24px; letter-spacing: 2px; margin: 0 0 10px; text-shadow: 0 0 15px rgba(79,172,254,.55); }
+    .auth-result h1 { font-size: 24px; letter-spacing: 2px; margin: 0 0 10px; color: #6ee7a8; text-shadow: 0 0 18px rgba(52,211,153,.6); }
     .auth-result p { color: #a0c4ff; font-size: 14px; line-height: 1.9; margin: 0; word-break: break-all; }
-    .auth-result .detail { color: #7fa8d9; font-size: 12.5px; margin-top: 10px; }
-    .st-proc h1 { color: #a0c4ff; }
-    .st-ok h1 { color: #6ee7a8; text-shadow: 0 0 18px rgba(52,211,153,.6); }
-    .st-bad h1 { color: #ff9aa4; text-shadow: 0 0 18px rgba(248,113,113,.6); }
+    .auth-result .btn { display:inline-block; margin-top:22px; padding:12px 34px; border-radius:12px; background:rgba(79,172,254,.92); color:#fff; font-size:14px; font-weight:600; text-decoration:none; letter-spacing:2px; }
+    .auth-result .btn:active { opacity:.85; }
   </style>
 </head>
 <body>
   <div class="auth">
     <div class="orb a"></div><div class="orb b"></div>
-    <main class="auth-result st-proc" id="root">
+    <main class="auth-result" id="root">
       <svg class="mark" viewBox="0 0 120 120" aria-hidden="true">
-        <circle cx="60" cy="60" r="54" fill="none" stroke="currentColor" stroke-width="6" opacity=".35"/>
+        <circle cx="60" cy="60" r="54" fill="rgba(52,211,153,0.14)" stroke="#34d399" stroke-width="6"/>
+        <path d="M38 61l15 15 29-31" fill="none" stroke="#34d399" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-      <h1>正在验证…</h1>
-      <p>请稍候</p>
+      <h1>完成</h1>
+      <p>邮箱验证已完成，你现在可以登录使用了</p>
+      <a class="btn" href="./">返回登录</a>
     </main>
   </div>
 
   <script src="./js/config.js"></script>
   <script src="./js/vendor/supabase.js"></script>
   <script>
-    // 从链接参数读取验证信息并调用验证接口
-    const params = new URLSearchParams(location.search);
-    const tokenHash = params.get('token') || '';
-    const type = params.get('type') || 'signup';
-    const root = document.getElementById('root');
-
-    function render(ok, detail) {
-      const okIcon = '<svg class="mark" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="54" fill="rgba(52,211,153,0.14)" stroke="#34d399" stroke-width="6"/><path d="M38 61l15 15 29-31" fill="none" stroke="#34d399" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-      const badIcon = '<svg class="mark" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="54" fill="rgba(248,113,113,0.14)" stroke="#f87171" stroke-width="6"/><path d="M42 42l36 36M78 42l-36 36" fill="none" stroke="#f87171" stroke-width="9" stroke-linecap="round"/></svg>';
-      root.className = 'auth-result ' + (ok ? 'st-ok' : 'st-bad');
-      root.innerHTML =
-        (ok ? okIcon : badIcon) +
-        '<h1>' + (ok ? '验证成功' : '验证失败') + '</h1>' +
-        (ok
-          ? '<p>验证成功，您现在可关闭此页面</p>'
-          : '<p>验证失败</p><p class="detail">' + (detail || '链接无效或已过期') + '</p>');
-    }
-
-    async function verify() {
-      if (!tokenHash) {
-        render(false, '缺少验证参数，请使用邮件中的最新链接打开本页');
-        return;
-      }
+    // 验证已在服务端完成（官方验证页处理完毕后重定向到本页，并随 URL 带回会话）。
+    // 本页只负责恢复会话后呈现唯一的完成状态。
+    (async function () {
       try {
-        const sb = window.supabase.createClient(window.APP_CONFIG.supabaseUrl, window.APP_CONFIG.supabaseKey, { auth: { persistSession: true } });
-        const { error } = await sb.auth.verifyOtp({ token_hash: tokenHash, type });
-        if (error) render(false, error.message || '链接无效或已过期');
-        else render(true);
+        const sb = window.supabase.createClient(
+          window.APP_CONFIG.supabaseUrl,
+          window.APP_CONFIG.supabaseKey,
+          { auth: { persistSession: true, detectSessionInUrl: true } }
+        );
+        // 等待初始化完成：官方重定向带来的 access_token / code 会在此被恢复为会话
+        await sb.auth.getSession();
       } catch (e) {
-        render(false, e.message || '网络异常，请稍后重试');
+        // 本页仅一种终态：完成（官方验证失败时不会到达本页）
       }
-    }
-    verify();
+    })();
   </script>
 </body>
 </html>
