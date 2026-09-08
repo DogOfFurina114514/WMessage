@@ -2,11 +2,11 @@
 
 「WMessage」—— 基于 **Supabase** 的即时通讯软件,本仓库只包含**三端前端**:
 
-- 🌐 **网页端** —— GitHub Pages 部署,`dogoffurinagi.fucku.top` 同款玻璃拟态风格
-- 📱 **手机端** —— 响应式布局,Material Design 3 + Telegram 式聊天界面 + 悬浮底栏(PWA 可安装)
-- 💻 **电脑端** —— Electron 嵌套页面,WinUI3 / Fluent Design 风格
+- **网页端** —— GitHub Pages 部署,`dogoffurinagi.fucku.top` 同款玻璃拟态风格
+- **手机端** —— 响应式布局,Material Design 3 + Telegram 式聊天界面 + 悬浮底栏(PWA 可安装)
+- **电脑端** —— Electron 嵌套页面,WinUI3 / Fluent Design 风格
 
-> 🔒 **后端为私有仓库**:`DogOfFurina114514/WMessageBackend`(Supabase 迁移、RLS 策略、配置),请勿在本仓库存放后端代码与任何密钥。
+> **后端为私有仓库**:`DogOfFurina114514/WMessageBackend`(Supabase 迁移、RLS 策略、配置),请勿在本仓库存放后端代码与任何密钥。
 
 **线上地址**:https://dogoffurina114514.github.io/WMessage/
 **控制面板**:`/control/signin.html`(隐藏入口,仅手动输入访问)
