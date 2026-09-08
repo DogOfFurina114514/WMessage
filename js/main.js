@@ -53,12 +53,20 @@ function desktopCall(action, payload) {
   }
 }
 
-// 桌面端：上报页面内容尺寸，壳调整窗口大小（自动贴合）
+// 桌面端：上报登录卡片实际尺寸，壳据此贴合窗口
 function reportSize() {
   if (!state.isElectron) return;
-  const w = document.documentElement.scrollWidth || window.innerWidth;
-  const h = document.documentElement.scrollHeight || window.innerHeight;
-  desktopCall('resize', { w: Math.ceil(w) + 2, h: Math.ceil(h) + 2 });
+  let w = document.documentElement.scrollWidth || window.innerWidth;
+  let h = document.documentElement.scrollHeight || window.innerHeight;
+  const card = document.querySelector('.auth-card');
+  if (card) {
+    const r = card.getBoundingClientRect();
+    if (r.width > 40 && r.height > 40) {
+      w = r.width;
+      h = r.height;
+    }
+  }
+  desktopCall('resize', { w: Math.ceil(w) + 26, h: Math.ceil(h) + 40 });
 }
 
 function setMobileView(view) {
