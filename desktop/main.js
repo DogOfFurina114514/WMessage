@@ -7,6 +7,8 @@ const fs = require('node:fs');
 const DEFAULT_URL = 'https://dogoffurina114514.github.io/WMessage/';
 const argUrl = process.argv.find((a) => a.startsWith('--url='));
 const APP_URL = (argUrl ? argUrl.slice(6) : process.env.WMESSAGE_URL) || DEFAULT_URL;
+// 本地优先：前端文件随程序打包（resources/app/www/），不依赖页面服务器；可加 --url= 指定远程
+const LOCAL_INDEX = path.join(__dirname, 'www', 'index.html');
 
 // 便携版目录约定：安装目录只放主程序文件；
 //   data/   ← 应用数据（登录会话、本地存储）
@@ -51,7 +53,12 @@ function createWindow() {
     },
   });
 
-  win.loadURL(APP_URL);
+  const useLocal = !process.env.WMESSAGE_URL && !argUrl && fs.existsSync(LOCAL_INDEX);
+  if (useLocal) {
+    win.loadFile(LOCAL_INDEX); // 本地独立运行（无缓存、离线可开）
+  } else {
+    win.loadURL(APP_URL);
+  }
 
   // 外部链接交给系统浏览器，禁止在新窗口打开
   win.webContents.setWindowOpenHandler(({ url }) => {
