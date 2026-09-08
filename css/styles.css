@@ -374,6 +374,15 @@ input, textarea { font: inherit; color: var(--text); }
 .empty .big { line-height: 1; }
 .send-mini .send-ic { display: none; }
 
+/* 桌面客户端：无边框窗口右上角关闭按钮 */
+.win-close {
+  position: absolute; top: 14px; right: 14px; z-index: 6;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(8px);
+}
+.win-close:hover { background: rgba(248, 113, 113, 0.25); border-color: rgba(248, 113, 113, 0.5); color: #fff; }
+
 /* ============ 移动端视图 / 悬浮底栏（仅 theme-mobile 内启用显示规则） ============ */
 .mobile-views { display: none; }
 .floatnav { display: none; }
