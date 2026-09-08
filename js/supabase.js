@@ -1,5 +1,5 @@
-// WMessage 数据层 —— Supabase（认证 / 查询 / Realtime / Storage）
-// 接口签名与原 Cloudflare 版 api.js 保持一致，供 main.js 无缝切换
+// WMessage 数据层（认证 / 查询 / 实时 / 存储）
+// 接口签名与原数据层保持一致，供主逻辑无缝切换
 // 依赖 index.html 中加载的 supabase-js（window.supabase）
 import { getUser } from './store.js';
 
