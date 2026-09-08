@@ -53,19 +53,14 @@ async function currentUserId() {
   return data.user.id;
 }
 
-/* ==================== 认证（邮箱 + 密码；登录支持用户名/邮箱） ==================== */
+/* ==================== 认证（用户名/邮箱 + 密码；用户名与邮箱独立） ==================== */
 export async function login({ account, password }) {
-  // 账号输入：直接是邮箱，或用户名（当前用户名=注册邮箱；也支持未来纯用户名）
   let email = String(account || '').trim();
   if (!email.includes('@')) {
-    const found = await sb.from('users').select('username').eq('username', email).maybeSingle();
-    if (!found.data) {
-      const byNick = await sb.from('users').select('username').ilike('nickname', email).limit(1).maybeSingle();
-      if (!byNick.data) throw new Error('该用户名或邮箱不存在,请核对后重试');
-      email = byNick.data.username;
-    } else {
-      email = found.data.username;
-    }
+    // 用户名登录：解析出注册邮箱
+    const found = await sb.from('users').select('email').eq('username', email).maybeSingle();
+    if (!found.data || !found.data.email) throw new Error('该用户名或邮箱不存在,请核对后重试');
+    email = found.data.email;
   }
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
   if (error) {
@@ -93,10 +88,16 @@ export async function resendVerification(email) {
   return true;
 }
 
-export async function register({ email, password, nickname }) {
-  const dup = await sb.from('users').select('id').eq('username', email).maybeSingle();
-  if (dup.data) throw new Error('该邮箱已被注册');
-  const { data, error } = await sb.auth.signUp({ email, password });
+export async function register({ username, email, password, nickname }) {
+  const uname = String(username || '').trim();
+  const mail = String(email || '').trim().toLowerCase();
+  if (!/^.{2,20}$/.test(uname)) throw new Error('用户名需为 2-20 个字符');
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) throw new Error('请输入有效的邮箱地址');
+  const dupU = await sb.from('users').select('id').eq('username', uname).maybeSingle();
+  if (dupU.data) throw new Error('该用户名已被使用');
+  const dupE = await sb.from('users').select('id').eq('email', mail).maybeSingle();
+  if (dupE.data) throw new Error('该邮箱已被注册');
+  const { data, error } = await sb.auth.signUp({ email: mail, password });
   if (error) {
     const m = error.message || '';
     if (/already been registered/i.test(m)) throw new Error('该邮箱已被注册');
@@ -106,17 +107,16 @@ export async function register({ email, password, nickname }) {
   if (!user) throw new Error('注册失败，请稍后重试');
   const profile = {
     id: user.id,
-    username: email,
-    nickname: (nickname || email).slice(0, 40),
-    avatar_color: pickColor(nickname || email),
+    username: uname,
+    email: mail,
+    nickname: (nickname || uname).slice(0, 40),
+    avatar_color: pickColor(nickname || uname),
   };
   const ins = await sb.from('users').insert(profile).select('*').single();
   if (ins.error) {
-    // users 行冲突时回收 auth 用户，避免残留
     await sb.auth.signOut();
-    throw new Error('该邮箱已被注册');
+    throw new Error('该用户名或邮箱已被注册');
   }
-  // 邮箱验证开启时 signUp 无 session（needVerify=true），前端提示查收邮箱
   return {
     user: toUser(ins.data),
     token: data.session ? data.session.access_token : '',
