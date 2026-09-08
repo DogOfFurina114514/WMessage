@@ -36,6 +36,8 @@ html.theme-desktop .auth-card {
   border: none;
   border-radius: 0;
   box-shadow: none;
+  background: var(--bg);          /* 与窗口背景完全统一 */
+  backdrop-filter: none;
 }
 html.theme-desktop .app { background: var(--bg); }
 
