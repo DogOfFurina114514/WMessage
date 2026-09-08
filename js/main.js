@@ -102,12 +102,12 @@ function showAuth() {
         </div>
         <form id="authForm" autocomplete="on">
           <div class="field">
-            <label>用户名</label>
-            <input id="authUsername" autocomplete="username" placeholder="3-20 位字母、数字或下划线" required>
+            <label>邮箱</label>
+            <input id="authEmail" type="email" autocomplete="email" placeholder="you@example.com" required>
           </div>
           <div class="field" id="nickField" hidden>
             <label>昵称</label>
-            <input id="authNickname" autocomplete="nickname" placeholder="显示名称（可选，默认同用户名）" maxlength="20">
+            <input id="authNickname" autocomplete="nickname" placeholder="显示名称（可选，默认同邮箱）" maxlength="40">
           </div>
           <div class="field">
             <label>密码</label>
@@ -137,7 +137,7 @@ function showAuth() {
 
   $('#authForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const username = $('#authUsername').value.trim();
+    const email = $('#authEmail').value.trim();
     const password = $('#authPassword').value;
     const nickname = $('#authNickname').value.trim();
     const btn = $('#authSubmit');
@@ -145,8 +145,14 @@ function showAuth() {
     $('#authError').textContent = '';
     try {
       const data = mode === 'login'
-        ? await api.login({ username, password })
-        : await api.register({ username, password, nickname });
+        ? await api.login({ email, password })
+        : await api.register({ email, password, nickname });
+      if (data.needVerify) {
+        // 邮箱验证开启：注册成功但需先确认邮箱
+        setToken('');
+        $('#authError').textContent = `注册成功！验证邮件已发送至 ${email}，请点击邮件中的链接完成验证后再登录。`;
+        return;
+      }
       setToken(data.token);
       setUser(data.user);
       state.user = data.user;
