@@ -30,7 +30,9 @@ const state = {
 /* ==================== 平台检测与主题 ====================
    桌面客户端 → theme-desktop；手机/PWA → theme-mobile；桌面浏览器 → theme-web */
 function detectPlatform() {
-  const isElectron = !!(window.desktop && window.desktop.isDesktop) || !!(window.chrome && window.chrome.webview);
+  // 桌面壳严格判定：Electron preload 注入，或 WebView2（且来源必须是内置 app.local）
+  const isWebView2 = !!(window.chrome && window.chrome.webview) && location.hostname === 'app.local';
+  const isElectron = !!(window.desktop && window.desktop.isDesktop) || isWebView2;
   const isMobile = !isElectron && (
     matchMedia('(max-width: 820px)').matches ||
     /Mobi|Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)
