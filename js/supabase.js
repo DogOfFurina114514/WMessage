@@ -53,36 +53,49 @@ async function currentUserId() {
   return data.user.id;
 }
 
-/* ==================== 认证（用户名 → email 映射 wmessage.local） ==================== */
-export async function login({ username, password }) {
-  const email = username + '@wmessage.local';
+/* ==================== 认证（邮箱 + 密码，邮箱验证开启） ==================== */
+export async function login({ email, password }) {
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  if (error) throw authErr(error);
+  if (error) {
+    const m = error.message || '';
+    if (/Invalid login credentials/i.test(m)) throw new Error('邮箱或密码错误');
+    if (/Email not confirmed/i.test(m)) throw new Error('邮箱尚未验证，请先点击验证邮件中的链接');
+    throw authErr(error);
+  }
   const { data: row, error: e2 } = await sb.from('users').select('*').eq('id', data.user.id).single();
   if (e2 || !row) throw new Error('账号资料不存在,请重新注册');
   return { user: toUser(row), token: data.session ? data.session.access_token : '' };
 }
 
-export async function register({ username, password, nickname }) {
-  const email = username + '@wmessage.local';
-  const dup = await sb.from('users').select('id').eq('username', username).maybeSingle();
-  if (dup.data) throw new Error('该用户名已被注册');
+export async function register({ email, password, nickname }) {
+  const dup = await sb.from('users').select('id').eq('username', email).maybeSingle();
+  if (dup.data) throw new Error('该邮箱已被注册');
   const { data, error } = await sb.auth.signUp({ email, password });
-  if (error) throw authErr(error);
+  if (error) {
+    const m = error.message || '';
+    if (/already been registered/i.test(m)) throw new Error('该邮箱已被注册');
+    throw authErr(error);
+  }
   const user = data.user;
-  if (!user) throw new Error('注册未完成(项目需关闭邮箱验证,请检查 Supabase 设置)');
+  if (!user) throw new Error('注册失败，请稍后重试');
   const profile = {
     id: user.id,
-    username,
-    nickname: (nickname || username).slice(0, 20),
-    avatar_color: pickColor(nickname || username),
+    username: email,
+    nickname: (nickname || email).slice(0, 40),
+    avatar_color: pickColor(nickname || email),
   };
   const ins = await sb.from('users').insert(profile).select('*').single();
   if (ins.error) {
+    // users 行冲突时回收 auth 用户，避免残留
     await sb.auth.signOut();
-    throw new Error('该用户名已被注册');
+    throw new Error('该邮箱已被注册');
   }
-  return { user: toUser(ins.data), token: data.session ? data.session.access_token : '' };
+  // 邮箱验证开启时 signUp 无 session（needVerify=true），前端提示查收邮箱
+  return {
+    user: toUser(ins.data),
+    token: data.session ? data.session.access_token : '',
+    needVerify: !data.session,
+  };
 }
 
 export async function me() {
