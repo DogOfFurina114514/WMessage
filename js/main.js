@@ -100,8 +100,12 @@ function showAuth() {
           <button type="button" class="tab" data-mode="register">注 册</button>
         </div>
         <form id="authForm" autocomplete="on">
+          <div class="field" id="userField" hidden>
+            <label>用户名</label>
+            <input id="authUsername" autocomplete="off" placeholder="2-20 个字符，登录时可使用" maxlength="20" required>
+          </div>
           <div class="field">
-            <label>账号</label>
+            <label id="emailLabel">账号</label>
             <input id="authEmail" type="text" autocomplete="username" placeholder="用户名或邮箱" required>
           </div>
           <div class="field" id="nickField" hidden>
@@ -127,7 +131,10 @@ function showAuth() {
     tab.addEventListener('click', () => {
       mode = tab.dataset.mode;
       tabs.forEach((t) => t.classList.toggle('active', t === tab));
+      $('#userField').hidden = mode !== 'register';
+      $('#userField input').required = mode === 'register';
       $('#nickField').hidden = mode !== 'register';
+      $('#emailLabel').textContent = mode === 'register' ? '邮箱' : '账号';
       $('#authEmail').placeholder = mode === 'register' ? '注册请使用邮箱（you@example.com）' : '用户名或邮箱';
       $('#authSubmit').textContent = mode === 'login' ? '登 录' : '注 册';
       $('#authTip').textContent = mode === 'login' ? '还没有账号？点击「注册」创建' : '已有账号？点击「登录」';
@@ -145,13 +152,14 @@ function showAuth() {
     const email = $('#authEmail').value.trim();
     const password = $('#authPassword').value;
     const nickname = $('#authNickname').value.trim();
+    const username = $('#authUsername') ? $('#authUsername').value.trim() : '';
     const btn = $('#authSubmit');
     btn.disabled = true;
     $('#authError').textContent = '';
     try {
       const data = mode === 'login'
         ? await api.login({ account: email, password })
-        : await api.register({ email, password, nickname });
+        : await api.register({ username, email, password, nickname });
       if (data.needVerify) {
         // 邮箱验证开启：注册成功但需先确认邮箱
         setToken('');
