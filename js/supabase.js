@@ -59,12 +59,26 @@ export async function login({ email, password }) {
   if (error) {
     const m = error.message || '';
     if (/Invalid login credentials/i.test(m)) throw new Error('邮箱或密码错误');
-    if (/Email not confirmed/i.test(m)) throw new Error('邮箱尚未验证，请先点击验证邮件中的链接');
+    if (/Email not confirmed/i.test(m)) {
+      const err = new Error('邮箱尚未验证，请先完成邮箱验证');
+      err.code = 'EMAIL_NOT_CONFIRMED';
+      throw err;
+    }
     throw authErr(error);
   }
   const { data: row, error: e2 } = await sb.from('users').select('*').eq('id', data.user.id).single();
   if (e2 || !row) throw new Error('账号资料不存在,请重新注册');
   return { user: toUser(row), token: data.session ? data.session.access_token : '' };
+}
+
+// 重发验证邮件（signup 类型）
+export async function resendVerification(email) {
+  const { error } = await sb.auth.resend({ type: 'signup', email });
+  if (error) {
+    if (/rate limit/i.test(error.message)) throw new Error('发送太频繁，请稍后再试');
+    throw new Error(error.message || '重发失败');
+  }
+  return true;
 }
 
 export async function register({ email, password, nickname }) {
