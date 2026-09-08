@@ -36,18 +36,27 @@
   <script src="./js/vendor/supabase.js"></script>
   <script>
     // 验证已在服务端完成（官方验证页处理完毕后重定向到本页，并随 URL 带回会话）。
-    // 本页只负责恢复会话后呈现唯一的完成状态。
+    // 本页只负责恢复会话，然后呈现唯一的完成状态。
     (async function () {
       try {
-        const sb = window.supabase.createClient(
-          window.APP_CONFIG.supabaseUrl,
-          window.APP_CONFIG.supabaseKey,
-          { auth: { persistSession: true, detectSessionInUrl: true } }
-        );
-        // 等待初始化完成：官方重定向带来的 access_token / code 会在此被恢复为会话
-        await sb.auth.getSession();
+        const url = window.APP_CONFIG.supabaseUrl;
+        const key = window.APP_CONFIG.supabaseKey;
+        const code = new URLSearchParams(location.search).get('code');
+        const hash = new URLSearchParams(location.hash.slice(1));
+        const accessToken = hash.get('access_token');
+        let sb = null;
+
+        if (code) {
+          // PKCE 流程：验证后回跳携带一次性 code
+          sb = window.supabase.createClient(url, key, { auth: { persistSession: true, flowType: 'pkce', detectSessionInUrl: false } });
+          await sb.auth.exchangeCodeForSession(code);
+        } else if (accessToken) {
+          // 隐式流程：验证后回跳携带 access_token（hash 中）
+          sb = window.supabase.createClient(url, key, { auth: { persistSession: true, detectSessionInUrl: false } });
+          await sb.auth.setSession({ access_token: accessToken, refresh_token: hash.get('refresh_token') || '' });
+        }
       } catch (e) {
-        // 本页仅一种终态：完成（官方验证失败时不会到达本页）
+        // 本页仅一种终态：完成（官方验证失败时不会重定向到本页）
       }
     })();
   </script>
