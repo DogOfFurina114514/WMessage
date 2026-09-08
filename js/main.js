@@ -149,11 +149,17 @@ function showAuth() {
   }
 
   // 桌面客户端右上角关闭按钮（无边框窗口）
-  if (window.desktop && window.desktop.closeWindow) {
+  if (window.desktop && window.desktop.isDesktop) {
     const winClose = $('#winClose');
     if (winClose) {
       winClose.hidden = false;
-      winClose.addEventListener('click', () => window.desktop.closeWindow());
+      winClose.addEventListener('click', () => {
+        if (window.desktop && window.desktop.closeWindow) {
+          window.desktop.closeWindow();
+        } else {
+          try { window.close(); } catch { /* 忽略 */ }
+        }
+      });
     }
   }
 
