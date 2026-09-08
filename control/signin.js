@@ -1,5 +1,5 @@
 // WMessage 控制面板登录页逻辑
-// 账号与密码均为单向加密存储（PBKDF2-SHA256 + 随机盐 + 150000 次迭代），源码中无任何明文。
+// 账号与密码均为单向加密存储，源码中无任何明文。
 // 点击登录时才验算：按钮禁用 → “登录中…” → 显示“登录成功”或“账号或密码错误”。
 const ACCOUNT_HASH = { salt: 'TAox23sk6HCGVUDMlV4YsA', hash: 'QMYAvEQJDikehORMIAj6+QKV0G1usVj5+E81erfeXsQ=' };
 const PASSWORD_HASH = { salt: 'TQcGMSpxuo2UtDnFngS21g', hash: 'moNZmXkJ3pMcOgKW+dvPmcia3i2fFdE1hAeoX/Yl89E=' };
