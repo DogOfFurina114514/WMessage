@@ -374,9 +374,10 @@ input, textarea { font: inherit; color: var(--text); }
 .empty .big { line-height: 1; }
 .send-mini .send-ic { display: none; }
 
-/* 桌面客户端：无边框窗口右上角关闭按钮 */
+/* 桌面客户端：登录卡片右上角关闭按钮 */
 .win-close {
-  position: absolute; top: 14px; right: 14px; z-index: 6;
+  position: absolute; top: 12px; right: 12px; z-index: 6;
+  width: 28px; height: 28px;
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.18);
   backdrop-filter: blur(8px);
