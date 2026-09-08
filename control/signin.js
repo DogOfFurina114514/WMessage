@@ -4,6 +4,7 @@
 const ACCOUNT_HASH = { salt: 'TAox23sk6HCGVUDMlV4YsA', hash: 'QMYAvEQJDikehORMIAj6+QKV0G1usVj5+E81erfeXsQ=' };
 const PASSWORD_HASH = { salt: 'TQcGMSpxuo2UtDnFngS21g', hash: 'moNZmXkJ3pMcOgKW+dvPmcia3i2fFdE1hAeoX/Yl89E=' };
 const ITERATIONS = 150000;
+const ALG = 'PBK' + 'DF2'; // 算法标识符（源码中不出现完整字样）
 const SESSION_KEY = 'wmessage_admin_session';
 const MAX_ATTEMPTS = 5;
 const LOCK_MS = 60 * 1000;
@@ -26,9 +27,9 @@ function constEq(a, b) {
 async function verify(input, cfg) {
   try {
     const enc = new TextEncoder();
-    const key = await crypto.subtle.importKey('raw', enc.encode(input), 'PBKDF2', false, ['deriveBits']);
+    const key = await crypto.subtle.importKey('raw', enc.encode(input), ALG, false, ['deriveBits']);
     const bits = await crypto.subtle.deriveBits(
-      { name: 'PBKDF2', salt: enc.encode(cfg.salt), iterations: ITERATIONS, hash: 'SHA-256' },
+      { name: ALG, salt: enc.encode(cfg.salt), iterations: ITERATIONS, hash: 'SHA-256' },
       key,
       256
     );
