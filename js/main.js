@@ -55,39 +55,9 @@ function desktopCall(action, payload) {
   }
 }
 
-// 桌面端：上报登录卡片实际尺寸，壳据此贴合窗口（窗口=卡片大小，无留白）
-function reportSize() {
-  if (!state.isElectron) return;
-  let w = document.documentElement.scrollWidth || window.innerWidth;
-  let h = document.documentElement.scrollHeight || window.innerHeight;
-  const card = document.querySelector('.auth-card');
-  if (card) {
-    const r = card.getBoundingClientRect();
-    if (r.width > 40 && r.height > 40) {
-      w = r.width;
-      h = r.height;
-    }
-  }
-  desktopCall('resize', { w: Math.ceil(w) + 2, h: Math.ceil(h) + 2 });
-}
-
 // 桌面端：窗口标题随界面变化（登录/注册/主界面）
 function setDesktopTitle(text) {
   desktopCall('title', { text });
-}
-
-// 桌面端：实时观察卡片尺寸变化（切换登录/注册立即调整，无延迟）
-function watchCardResize() {
-  if (!state.isElectron) return;
-  const card = document.querySelector('.auth-card');
-  if (!card || window.__wmsgRo) return;
-  try {
-    window.__wmsgRo = new ResizeObserver(() => {
-      clearTimeout(window.__wmsgRsT);
-      window.__wmsgRsT = setTimeout(reportSize, 50);
-    });
-    window.__wmsgRo.observe(card);
-  } catch { /* 老浏览器忽略 */ }
 }
 
 function setMobileView(view) {
@@ -123,188 +93,10 @@ async function boot() {
       else toast(e.message, 'error');
     }
   }
-  showAuth();
+  // 未登录：跳转到独立登录页
+  location.replace('./login.html');
 }
 
-/* ==================== 登录 / 注册 ==================== */
-
-function showAuth() {
-  if (state.unsubRoom) {
-    state.unsubRoom();
-    state.unsubRoom = null;
-  }
-  state.activeRoom = null;
-  $app.innerHTML = `
-    <div class="auth">
-      <div class="orb a"></div><div class="orb b"></div>
-      <div class="auth-card">
-        <button class="icon-btn win-close" id="winClose" type="button" hidden title="关闭"><svg class="ic"><use href="#i-close"></use></svg></button>
-        <div class="auth-brand">
-          <img src="./logo.svg" alt="WMessage">
-          <h1>WMessage</h1>
-          <p>轻快 · 私密 · 安全</p>
-        </div>
-        <div class="auth-tabs">
-          <button type="button" class="tab active" data-mode="login">登 录</button>
-          <button type="button" class="tab" data-mode="register">注 册</button>
-        </div>
-        <form id="authForm" autocomplete="on">
-          <div class="field" id="userField" hidden>
-            <label>用户名</label>
-            <input id="authUsername" autocomplete="off" placeholder="2-20 个字符，登录时可使用" maxlength="20" required>
-          </div>
-          <div class="field">
-            <label id="emailLabel">账号</label>
-            <input id="authEmail" type="text" autocomplete="username" placeholder="用户名或邮箱" required>
-          </div>
-          <div class="field" id="nickField" hidden>
-            <label>昵称</label>
-            <input id="authNickname" autocomplete="nickname" placeholder="显示名称（可选，默认同邮箱）" maxlength="40">
-          </div>
-          <div class="field">
-            <label>密码</label>
-            <input id="authPassword" type="password" autocomplete="current-password" placeholder="至少 6 位" required>
-          </div>
-          <div class="auth-error" id="authError"></div>
-          <button class="btn btn-primary" id="authSubmit" type="submit">登 录</button>
-        </form>
-        <div class="auth-foot">
-          <span id="authTip">还没有账号？点击「注册」创建</span>
-        </div>
-      </div>
-    </div>`;
-
-  let mode = 'login';
-  const tabs = $app.querySelectorAll('.tab');
-  tabs.forEach((tab) => {
-    tab.addEventListener('click', () => {
-      mode = tab.dataset.mode;
-      tabs.forEach((t) => t.classList.toggle('active', t === tab));
-      $('#userField').hidden = mode !== 'register';
-      $('#userField input').required = mode === 'register';
-      $('#nickField').hidden = mode !== 'register';
-      $('#emailLabel').textContent = mode === 'register' ? '邮箱' : '账号';
-      $('#authEmail').placeholder = mode === 'register' ? '注册请使用邮箱（you@example.com）' : '用户名或邮箱';
-      $('#authSubmit').textContent = mode === 'login' ? '登 录' : '注 册';
-      $('#authTip').textContent = mode === 'login' ? '还没有账号？点击「注册」创建' : '已有账号？点击「登录」';
-      $('#authError').textContent = '';
-      setDesktopTitle(reg ? 'WMessage 注册' : 'WMessage 登录');
-      setTimeout(reportSize, 150);
-      setTimeout(reportSize, 350);
-    });
-  });
-
-  setDesktopTitle('WMessage 登录');
-  watchCardResize();
-
-  // 深链：#register（如邀请邮件）直达注册标签
-  if (location.hash === '#register') {
-    const reg = $app.querySelector('.tab[data-mode="register"]');
-    if (reg) reg.click();
-  }
-
-  // 桌面端窗口拖拽（标题栏/空白区域按住拖动）
-  document.addEventListener('mousedown', (e) => {
-    if (!state.isElectron) return;
-    const t = e.target;
-    if (t && (t.closest('button, input, textarea, a, label'))) return;
-    if (t && (t.closest('.auth, .main-header, .side-head, .mview-head'))) {
-      e.preventDefault();
-      desktopCall('drag');
-    }
-  });
-
-  // 桌面客户端右上角关闭按钮（无边框窗口）
-  if (state.isElectron) {
-    const winClose = $('#winClose');
-    if (winClose) {
-      winClose.hidden = false;
-      winClose.addEventListener('click', () => desktopCall('close'));
-    }
-  }
-
-  // 桌面端：初始布局稳定后上报尺寸（窗口自动贴合登录卡片）
-  setTimeout(reportSize, 150);
-  setTimeout(reportSize, 400);
-  setTimeout(reportSize, 800);
-
-  $('#authForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = $('#authEmail').value.trim();
-    const password = $('#authPassword').value;
-    const nickname = $('#authNickname').value.trim();
-    const username = $('#authUsername') ? $('#authUsername').value.trim() : '';
-    const btn = $('#authSubmit');
-    btn.disabled = true;
-    $('#authError').textContent = '';
-    try {
-      const data = mode === 'login'
-        ? await api.login({ account: email, password })
-        : await api.register({ username, email, password, nickname });
-      if (data.needVerify) {
-        // 邮箱验证开启：注册成功但需先确认邮箱
-        setToken('');
-        $('#authError').textContent = `注册成功！验证邮件已发送至 ${email}，请点击邮件中的链接完成验证后再登录。`;
-        return;
-      }
-      setToken(data.token);
-      setUser(data.user);
-      state.user = data.user;
-      enterApp();
-    } catch (err) {
-      if (err.code === 'EMAIL_NOT_CONFIRMED') {
-        showVerifyModal(email);
-      } else {
-        $('#authError').textContent = err.message;
-      }
-    } finally {
-      btn.disabled = false;
-    }
-  });
-}
-
-/* ==================== 邮箱未验证弹窗（重发 + 60 秒冷却） ==================== */
-const RESEND_COOLDOWN = 60 * 1000;
-const RESEND_KEY = 'wmessage_resend_at';
-
-function showVerifyModal(email) {
-  const cooldownBox = el('div', { style: 'margin-top:10px;font-size:12px;color:var(--muted-2)' });
-  const resendBtn = el('button', { type: 'button', class: 'btn btn-primary', style: 'margin-top:14px' }, '重发验证邮件');
-  const body = el('div', null,
-    el('div', { style: 'color:var(--text);line-height:1.8;font-size:14px' },
-      `验证邮件已发送至 <b>${email}</b>。<br>请到邮箱（含垃圾箱）查看，点击「验证邮箱并登录」完成验证后再来登录。`),
-    cooldownBox,
-    resendBtn
-  );
-  const m = modal({ title: '邮箱尚未验证', body, actions: [{ label: '我知道了', onClick: () => {} }] });
-
-  resendBtn.addEventListener('click', async () => {
-    resendBtn.disabled = true;
-    try {
-      await api.resendVerification(email);
-      localStorage.setItem(RESEND_KEY, String(Date.now()));
-      cooldownBox.textContent = '验证邮件已重新发送，请查收。';
-      toast('验证邮件已重新发送');
-    } catch (e) {
-      cooldownBox.textContent = e.message;
-    }
-    tick();
-  });
-
-  function tick() {
-    const last = parseInt(localStorage.getItem(RESEND_KEY) || '0', 10);
-    const remain = Math.ceil((last + RESEND_COOLDOWN - Date.now()) / 1000);
-    if (remain > 0) {
-      resendBtn.disabled = true;
-      resendBtn.textContent = `${remain} 秒后可重发`;
-      setTimeout(tick, 1000);
-    } else {
-      resendBtn.disabled = false;
-      resendBtn.textContent = '重发验证邮件';
-    }
-  }
-  tick();
-}
 
 /* ==================== 主界面 ==================== */
 
@@ -1361,7 +1153,8 @@ function logout(reason = '') {
   state.cache.clear();
   state.activeRoom = null;
   state.user = null;
-  showAuth();
+  // 退出后回到独立登录页
+  location.replace('./login.html');
   if (reason) toast(reason, 'error');
 }
 
