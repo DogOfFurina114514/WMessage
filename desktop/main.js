@@ -38,9 +38,10 @@ function createWindow() {
     minWidth: 360,
     minHeight: 520,
     title: 'WMessage',
-    backgroundColor: '#0b0e1a',
+    backgroundColor: '#00000000',
+    frame: false,      // 不使用系统标题栏
+    transparent: true, // 窗口背景透明：登录时只显示卡片本体
     autoHideMenuBar: true,
-    frame: false, // 不使用系统标题栏
     icon: path.join(__dirname, 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
