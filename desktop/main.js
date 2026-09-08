@@ -1,6 +1,6 @@
 // WMessage 桌面端 —— 主进程
 // 默认加载前端页面；可用环境变量 WMESSAGE_URL 或 --url= 参数覆盖
-const { app, BrowserWindow, shell } = require('electron');
+const { app, BrowserWindow, shell, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('node:fs');
 
@@ -28,15 +28,19 @@ if (portableBase) {
   app.setPath('temp', temp);
 }
 
+let win = null;
+
 function createWindow() {
-  const win = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    minWidth: 400,
-    minHeight: 560,
+  // 无边框小窗口(登录页)；登录后由前端触发展开
+  win = new BrowserWindow({
+    width: 420,
+    height: 640,
+    minWidth: 360,
+    minHeight: 520,
     title: 'WMessage',
     backgroundColor: '#0b0e1a',
     autoHideMenuBar: true,
+    frame: false, // 不使用系统标题栏
     icon: path.join(__dirname, 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -54,7 +58,6 @@ function createWindow() {
     return { action: 'deny' };
   });
 
-  // 加载失败（如未配置 URL）时给出提示
   win.webContents.on('did-fail-load', (e, code, desc, validatedURL) => {
     if (validatedURL === 'about:blank') return;
     const html = `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><style>
@@ -62,13 +65,23 @@ function createWindow() {
       .card{max-width:520px;text-align:center;line-height:1.8;padding:24px}
       h1{font-size:22px} p{color:#8f97b8;font-size:14px} code{background:#1a2038;padding:2px 8px;border-radius:6px;color:#8b5cf6}
     </style></head><body><div class="card"><h1>无法加载页面</h1>
-      <p>请先用 <code>npm start -- --url=https://dogoffurina114514.github.io/WMessage/</code><br>
-      或设置环境变量 <code>WMESSAGE_URL</code> 指定正确的前端地址。</p>
-      <p style="font-size:12px;color:#6a7291">${String(desc || code || '')}</p>
+      <p>请用 <code>npm start -- --url=https://你的页面地址</code> 指定正确的前端地址。</p>
     </div></body></html>`;
     win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
   });
 }
+
+// 窗口控制(前端 Preload 调用)
+ipcMain.handle('window:close', () => {
+  if (win) win.close();
+});
+ipcMain.handle('window:expand', () => {
+  if (win) {
+    win.setMinimumSize(380, 560);
+    win.setSize(1200, 800);
+    win.center();
+  }
+});
 
 app.whenReady().then(() => {
   createWindow();
