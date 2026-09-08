@@ -1,6 +1,4 @@
-/* ============ 主题：手机端 —— Material Design 3 + Telegram 式布局 ============
-   布局参考 Telegram Mobile；底栏参考 InstallerX Revived 的
-   Material 3 Expressive / Miuix 浮动导航（悬浮药丸 + 选中胶囊指示），CSS 自实现 */
+/* ============ 主题：手机端（移动布局 + 悬浮导航，药丸胶囊式底栏） ============ */
 html.theme-mobile, html.theme-mobile body {
   --bg: #0f1115;
   --panel: #14171d;
@@ -82,7 +80,7 @@ html.theme-mobile .send-mini .send-ic {
 }
 html.theme-mobile .send-mini .send-label { display: none; }
 
-/* 底部悬浮导航（InstallX Revived / Miuix 式） */
+/* 底部悬浮导航（浮动药丸底栏） */
 html.theme-mobile .floatnav {
   display: flex;
   position: fixed;
@@ -188,7 +186,7 @@ html.theme-mobile .msetting-item {
 html.theme-mobile .msetting-item .micon { font-size: 20px; }
 html.theme-mobile .msetting-item .right { margin-left: auto; color: var(--muted-2); font-size: 12.5px; font-weight: 400; }
 
-/* Telegram 式消息 */
+/* 移动端消息气泡样式 */
 html.theme-mobile .messages { padding: 14px 14px 8px; }
 html.theme-mobile .msg { margin: 12px 0; max-width: 86%; }
 html.theme-mobile .msg-body { max-width: 100%; }
