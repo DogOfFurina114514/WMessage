@@ -28,8 +28,7 @@ const state = {
 };
 
 /* ==================== 平台检测与主题 ====================
-   Electron → theme-desktop(Fluent/WinUI) ；手机/PWA → theme-mobile(MD3) ；
-   桌面浏览器 → theme-web(dogoffurinagi 玻璃风) */
+   桌面客户端 → theme-desktop；手机/PWA → theme-mobile；桌面浏览器 → theme-web */
 function detectPlatform() {
   const isElectron = !!(window.desktop && window.desktop.isDesktop);
   const isMobile = !isElectron && (
@@ -94,7 +93,7 @@ function showAuth() {
         <div class="auth-brand">
           <img src="./logo.svg" alt="WMessage">
           <h1>WMessage</h1>
-          <p>Cloudflare × GitHub Pages 即时通讯</p>
+          <p>轻快 · 私密 · 安全</p>
         </div>
         <div class="auth-tabs">
           <button type="button" class="tab active" data-mode="login">登 录</button>
@@ -254,7 +253,7 @@ function appTemplate() {
       </section>
     </div>
 
-    <!-- 悬浮底栏（InstallerX Revived / Miuix 式浮动导航） -->
+    <!-- 悬浮底栏（移动端浮动导航） -->
     <nav class="floatnav" id="floatNav">
       <button type="button" class="fn-item active" data-view="chats"><span class="fn-icon"><svg class="ic"><use href="#i-chat"></use></svg></span><span class="fn-label">会话</span></button>
       <button type="button" class="fn-item" data-view="contacts"><span class="fn-icon"><svg class="ic"><use href="#i-members"></use></svg></span><span class="fn-label">联系人</span></button>
@@ -274,7 +273,7 @@ function enterApp() {
     setMobileView('chats');
     renderMobilePanel();
   }
-  // Supabase Storage 图片始终可用
+  // 图片存储始终可用
   state.uploadEnabled = true;
   const attach = $('#attachBtn');
   if (attach) attach.hidden = false;
