@@ -7,6 +7,19 @@ const DEFAULT_URL = 'https://dogoffurina114514.github.io/WMessage/';
 const argUrl = process.argv.find((a) => a.startsWith('--url='));
 const APP_URL = (argUrl ? argUrl.slice(6) : process.env.WMESSAGE_URL) || DEFAULT_URL;
 
+// 便携版目录约定：安装目录只放主程序文件；
+//   data/   ← 应用数据（登录会话、本地存储）
+//   cache/  ← 缓存
+//   temp/   ← 临时文件
+// electron-builder portable 会注入 PORTABLE_EXECUTABLE_DIR（exe 所在目录）
+if (process.env.PORTABLE_EXECUTABLE_DIR) {
+  const base = process.env.PORTABLE_EXECUTABLE_DIR;
+  app.setPath('userData', path.join(base, 'data'));
+  app.setPath('sessionData', path.join(base, 'data'));
+  app.setPath('cache', path.join(base, 'cache'));
+  app.setPath('temp', path.join(base, 'temp'));
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
