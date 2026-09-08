@@ -101,8 +101,8 @@ function showAuth() {
         </div>
         <form id="authForm" autocomplete="on">
           <div class="field">
-            <label>邮箱</label>
-            <input id="authEmail" type="email" autocomplete="email" placeholder="you@example.com" required>
+            <label>账号</label>
+            <input id="authEmail" type="text" autocomplete="username" placeholder="用户名或邮箱" required>
           </div>
           <div class="field" id="nickField" hidden>
             <label>昵称</label>
@@ -128,6 +128,7 @@ function showAuth() {
       mode = tab.dataset.mode;
       tabs.forEach((t) => t.classList.toggle('active', t === tab));
       $('#nickField').hidden = mode !== 'register';
+      $('#authEmail').placeholder = mode === 'register' ? '注册请使用邮箱（you@example.com）' : '用户名或邮箱';
       $('#authSubmit').textContent = mode === 'login' ? '登 录' : '注 册';
       $('#authTip').textContent = mode === 'login' ? '还没有账号？点击「注册」创建' : '已有账号？点击「登录」';
       $('#authError').textContent = '';
@@ -144,7 +145,7 @@ function showAuth() {
     $('#authError').textContent = '';
     try {
       const data = mode === 'login'
-        ? await api.login({ email, password })
+        ? await api.login({ account: email, password })
         : await api.register({ email, password, nickname });
       if (data.needVerify) {
         // 邮箱验证开启：注册成功但需先确认邮箱
