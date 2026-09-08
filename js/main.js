@@ -42,15 +42,23 @@ function detectPlatform() {
 }
 detectPlatform();
 
-// 桌面窗口调用：Electron 或 WebView2 桥接
-function desktopCall(action) {
+// 桌面窗口调用：Electron 或 WebView2 桥接；action: close/expand/drag/resize
+function desktopCall(action, payload) {
   if (window.desktop && window.desktop.isDesktop) {
     if (action === 'close' && window.desktop.closeWindow) return window.desktop.closeWindow();
     if (action === 'expand' && window.desktop.expandWindow) return window.desktop.expandWindow();
   }
   if (window.chrome && window.chrome.webview) {
-    try { window.chrome.webview.postMessage({ action }); } catch { /* 忽略 */ }
+    try { window.chrome.webview.postMessage(Object.assign({ action }, payload || {})); } catch { /* 忽略 */ }
   }
+}
+
+// 桌面端：上报页面内容尺寸，壳调整窗口大小（自动贴合）
+function reportSize() {
+  if (!state.isElectron) return;
+  const w = document.documentElement.scrollWidth || window.innerWidth;
+  const h = document.documentElement.scrollHeight || window.innerHeight;
+  desktopCall('resize', { w: Math.ceil(w) + 2, h: Math.ceil(h) + 2 });
 }
 
 function setMobileView(view) {
@@ -152,7 +160,9 @@ function showAuth() {
       $('#authTip').textContent = mode === 'login' ? '还没有账号？点击「注册」创建' : '已有账号？点击「登录」';
       $('#authError').textContent = '';
     });
+    setTimeout(reportSize, 120);
   });
+  setTimeout(reportSize, 60);
   // 深链：#register（如邀请邮件）直达注册标签
   if (location.hash === '#register') {
     const reg = $app.querySelector('.tab[data-mode="register"]');
