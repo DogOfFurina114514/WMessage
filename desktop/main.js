@@ -1,5 +1,5 @@
-// WMessage 桌面端 —— Electron 主进程
-// 默认加载 GitHub Pages 上的前端页面；可用环境变量 WMESSAGE_URL 或 --url= 参数覆盖
+// WMessage 桌面端 —— 主进程
+// 默认加载前端页面；可用环境变量 WMESSAGE_URL 或 --url= 参数覆盖
 const { app, BrowserWindow, shell } = require('electron');
 const path = require('path');
 
