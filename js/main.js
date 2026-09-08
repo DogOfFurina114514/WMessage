@@ -53,7 +53,7 @@ function desktopCall(action, payload) {
   }
 }
 
-// 桌面端：上报登录卡片实际尺寸，壳据此贴合窗口
+// 桌面端：上报登录卡片实际尺寸，壳据此贴合窗口（窗口=卡片大小，无留白）
 function reportSize() {
   if (!state.isElectron) return;
   let w = document.documentElement.scrollWidth || window.innerWidth;
@@ -66,7 +66,26 @@ function reportSize() {
       h = r.height;
     }
   }
-  desktopCall('resize', { w: Math.ceil(w) + 26, h: Math.ceil(h) + 40 });
+  desktopCall('resize', { w: Math.ceil(w) + 2, h: Math.ceil(h) + 2 });
+}
+
+// 桌面端：窗口标题随界面变化（登录/注册/主界面）
+function setDesktopTitle(text) {
+  desktopCall('title', { text });
+}
+
+// 桌面端：实时观察卡片尺寸变化（切换登录/注册立即调整，无延迟）
+function watchCardResize() {
+  if (!state.isElectron) return;
+  const card = document.querySelector('.auth-card');
+  if (!card || window.__wmsgRo) return;
+  try {
+    window.__wmsgRo = new ResizeObserver(() => {
+      clearTimeout(window.__wmsgRsT);
+      window.__wmsgRsT = setTimeout(reportSize, 50);
+    });
+    window.__wmsgRo.observe(card);
+  } catch { /* 老浏览器忽略 */ }
 }
 
 function setMobileView(view) {
@@ -167,10 +186,14 @@ function showAuth() {
       $('#authSubmit').textContent = mode === 'login' ? '登 录' : '注 册';
       $('#authTip').textContent = mode === 'login' ? '还没有账号？点击「注册」创建' : '已有账号？点击「登录」';
       $('#authError').textContent = '';
+      setDesktopTitle(reg ? 'WMessage 注册' : 'WMessage 登录');
       setTimeout(reportSize, 150);
       setTimeout(reportSize, 350);
     });
   });
+
+  setDesktopTitle('WMessage 登录');
+  watchCardResize();
 
   // 深链：#register（如邀请邮件）直达注册标签
   if (location.hash === '#register') {
@@ -381,6 +404,7 @@ function appTemplate() {
 
 function enterApp() {
   // 桌面客户端：登录成功后展开为全尺寸聊天窗口
+  setDesktopTitle('WMessage');
   desktopCall('expand');
   $app.innerHTML = appTemplate();
   state.rooms = [];
