@@ -80,6 +80,27 @@ export function modal({ title = '', body = null, actions = [], onClose = null })
   return { overlay, close };
 }
 
+// 自绘确认框（替代浏览器原生 confirm，避免原生弹窗被拦截/样式不一致）
+export function confirmDialog({ title = '确认', text = '', okLabel = '确定', cancelLabel = '取消' } = {}) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (v) => {
+      if (settled) return;
+      settled = true;
+      resolve(v);
+    };
+    modal({
+      title,
+      body: el('div', { style: 'line-height:1.9;font-size:14px;color:var(--text)' }, text),
+      actions: [
+        { label: cancelLabel, onClick: () => done(false) },
+        { label: okLabel, primary: true, onClick: () => done(true) },
+      ],
+      onClose: () => done(false),
+    });
+  });
+}
+
 export function avatarEl(text, color, size = 36) {
   const ch = Array.from(String(text || '?').trim() || '?')[0].toUpperCase();
   return el('div', {
