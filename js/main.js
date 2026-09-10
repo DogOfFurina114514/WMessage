@@ -25,6 +25,9 @@ const state = {
   typingClearTimer: null,
   pending: new Map(), // clientId -> msg
   mobileView: 'chats',
+  settingsOpen: false,
+  settingsSection: 'profile',
+  accountEmail: '',
 };
 
 /* ==================== 平台检测与主题 ====================
@@ -92,6 +95,7 @@ async function boot() {
     try {
       const { user } = await api.me();
       state.user = user;
+      state.accountEmail = user.email || '';
       setUser(user);
       enterApp();
       return;
@@ -127,12 +131,18 @@ function appTemplate() {
     <div class="t-bubbles"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
     <aside class="sidebar" id="sidebar">
       <div class="side-head">
-        <button class="icon-btn" id="notifyBtn" title="桌面通知"><svg class="ic"><use href="#i-bell"></use></svg></button>
+        <button class="icon-btn" id="sideMenuBtn" title="菜单"><svg class="ic"><use href="#i-menu"></use></svg></button>
         <div class="search-box">
           <svg class="ic search-ic"><use href="#i-search"></use></svg>
           <input id="searchInput" placeholder="搜索" autocomplete="off">
           <div class="search-pop" id="searchPop" hidden></div>
         </div>
+      </div>
+      <div class="side-menu" id="sideMenu" hidden>
+        <button type="button" data-act="new"><svg class="ic"><use href="#i-chat"></use></svg> 新建频道</button>
+        <button type="button" data-act="discover"><svg class="ic"><use href="#i-compass"></use></svg> 发现频道</button>
+        <button type="button" data-act="settings"><svg class="ic"><use href="#i-gear"></use></svg> 设置</button>
+        <button type="button" data-act="logout" class="danger"><svg class="ic"><use href="#i-logout"></use></svg> 退出登录</button>
       </div>
       <div class="room-list" id="roomList"></div>
       <button class="fab" id="fabBtn" type="button" title="新建"><svg class="ic"><use href="#i-edit"></use></svg></button>
@@ -145,6 +155,21 @@ function appTemplate() {
     <div class="backdrop" id="backdrop" hidden></div>
 
     <main class="main">
+      <section class="settings" id="settingsView" hidden>
+        <aside class="set-nav">
+          <div class="set-nav-head">
+            <button class="icon-btn" id="setBack" title="返回"><svg class="ic"><use href="#i-back"></use></svg></button>
+            <span>设置</span>
+          </div>
+          <div class="set-profile" id="setProfile"></div>
+          <div class="set-list" id="setList"></div>
+          <div class="set-foot">
+            <button type="button" class="set-item danger" id="setLogout"><svg class="ic"><use href="#i-logout"></use></svg> 退出登录</button>
+          </div>
+        </aside>
+        <div class="set-body" id="setBody"></div>
+      </section>
+
       <header class="main-header">
         <button class="icon-btn back" id="backBtn"><svg class="ic"><use href="#i-menu"></use></svg></button>
         <div class="head-avatar" id="headAvatar" hidden></div>
@@ -166,7 +191,7 @@ function appTemplate() {
       <footer class="composer">
         <div class="input-wrap">
           <button class="icon-btn" id="attachBtn" title="发送图片" type="button" hidden><svg class="ic"><use href="#i-image"></use></svg></button>
-          <textarea id="input" rows="1" placeholder="写消息…"></textarea>
+          <div class="input-area" id="input" contenteditable="plaintext-only" data-placeholder="写消息…" spellcheck="false"></div>
           <button class="icon-btn" id="emojiBtn" title="表情" type="button"><svg class="ic"><use href="#i-smile"></use></svg></button>
         </div>
         <button class="btn btn-primary send-mini" id="sendBtn" type="button"><svg class="ic send-ic"><use href="#i-send"></use></svg><span class="send-label">发送</span></button>
@@ -329,7 +354,7 @@ function renderUserChip() {
   chip.append(
     avatarEl(u.nickname, u.avatarColor, 38),
     el('div', { class: 'chip-info' },
-      el('div', { class: 'chip-name' }, u.nickname),
+      el('div', { class: 'chip-name' }, richText(u.nickname)),
       el('div', { class: 'chip-sub' }, '@' + u.username)),
     el('div', { class: 'chip-out' }, '退出')
   );
@@ -372,8 +397,8 @@ function roomItem(r) {
   },
     roomAvatar(r),
     el('div', { class: 'room-info' },
-      el('div', { class: 'room-name' }, roomDisplayName(r)),
-      el('div', { class: 'room-preview' }, preview)),
+      el('div', { class: 'room-name' }, richText(roomDisplayName(r))),
+      el('div', { class: 'room-preview' }, richText(preview))),
     el('div', { class: 'room-meta' },
       el('div', { class: 'room-time' }, formatListTime(r.lastMessageAt)),
       unread ? el('div', { class: 'badge' }, unread > 99 ? '99+' : unread) : null)
@@ -394,6 +419,12 @@ async function openRoom(room) {
   state.roomInfo = null;
   state.members = [];
   state.online = [];
+  // 打开会话时退出设置页
+  if (state.settingsOpen) {
+    state.settingsOpen = false;
+    const sv = $('#settingsView');
+    if (sv) sv.hidden = true;
+  }
   setListOnly(false);
   resetUnread(room.id);
   renderRooms();
@@ -522,7 +553,7 @@ function renderMembers() {
     const item = el('div', { class: 'member-item' },
       avatarEl(u.nickname, u.avatarColor, 34),
       el('div', { class: 'm-info' },
-        el('div', { class: 'm-name' }, u.nickname),
+        el('div', { class: 'm-name' }, richText(u.nickname)),
         el('div', { class: 'm-username' }, '@' + u.username)),
       el('div', { class: 'online-dot' + (state.online.includes(u.id) ? ' on' : '') })
     );
@@ -835,20 +866,62 @@ function toggleEmojiPanel() {
   state.emojiOpen = true;
 }
 
-function insertEmoji(emoji) {
-  const ta = $('#input');
-  if (!ta) return;
-  const s = ta.selectionStart ?? ta.value.length;
-  const e = ta.selectionEnd ?? s;
-  ta.value = ta.value.slice(0, s) + emoji + ta.value.slice(e);
-  ta.selectionStart = ta.selectionEnd = s + emoji.length;
-  ta.focus();
-  autosize(ta);
+/* ==================== 输入区（富文本：内置表情以图片显示） ==================== */
+
+// 读取输入区纯文本（表情图片还原为字符）
+function inputText() {
+  const host = $('#input');
+  if (!host) return '';
+  let out = '';
+  const walk = (n) => {
+    for (const c of n.childNodes) {
+      if (c.nodeType === 3) out += c.nodeValue;
+      else if (c.nodeName === 'IMG') out += c.getAttribute('data-emoji') || c.getAttribute('alt') || '';
+      else if (c.nodeName === 'BR') out += '\n';
+      else walk(c);
+    }
+  };
+  walk(host);
+  return out;
 }
 
-function autosize(ta) {
-  ta.style.height = 'auto';
-  ta.style.height = Math.min(ta.scrollHeight, 120) + 'px';
+// 清空 / 回填输入区
+function setInputText(text) {
+  const host = $('#input');
+  if (!host) return;
+  host.innerHTML = '';
+  if (text) host.append(richText(text));
+  autosizeInput();
+}
+
+// 在光标处插入表情图片（保持光标位置）
+function insertEmoji(emoji) {
+  const host = $('#input');
+  if (!host) return;
+  host.focus();
+  const sel = window.getSelection();
+  let range = null;
+  if (sel && sel.rangeCount && host.contains(sel.anchorNode)) range = sel.getRangeAt(0);
+  if (!range) {
+    range = document.createRange();
+    range.selectNodeContents(host);
+    range.collapse(false);
+  }
+  range.deleteContents();
+  const img = el('img', { class: 'emoji-inline', src: emojiSrc(emoji), alt: emoji, draggable: 'false' });
+  img.setAttribute('data-emoji', emoji);
+  range.insertNode(img);
+  range.setStartAfter(img);
+  range.collapse(true);
+  if (sel) { sel.removeAllRanges(); sel.addRange(range); }
+  autosizeInput();
+}
+
+function autosizeInput() {
+  const host = $('#input');
+  if (!host) return;
+  host.style.height = 'auto';
+  host.style.height = Math.min(host.scrollHeight, 132) + 'px';
 }
 
 /* ==================== 图片 ==================== */
@@ -895,7 +968,7 @@ function bindSearch(inputSel = '#searchInput', popSel = '#searchPop') {
           const item = el('div', { class: 'search-item' },
             avatarEl(u.nickname, u.avatarColor, 32),
             el('div', null,
-              el('div', { class: 'room-name' }, u.nickname),
+              el('div', { class: 'room-name' }, richText(u.nickname)),
               el('div', { class: 'sub' }, '@' + u.username)));
           item.addEventListener('click', () => {
             pop.hidden = true;
@@ -1166,8 +1239,35 @@ function toggleMoreMenu() {
 /* ==================== 事件绑定 ==================== */
 
 function bindAppEvents() {
-  // 侧边栏
-  $('#notifyBtn').addEventListener('click', toggleNotify);
+  // 侧栏汉堡菜单（Telegram 式）
+  const menuBtn = $('#sideMenuBtn');
+  const menu = $('#sideMenu');
+  if (menuBtn && menu) {
+    menuBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      menu.hidden = !menu.hidden;
+    });
+    menu.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-act]');
+      if (!btn) return;
+      menu.hidden = true;
+      const act = btn.dataset.act;
+      if (act === 'new') openNewChannelModal();
+      else if (act === 'discover') openDiscoverModal();
+      else if (act === 'settings') openSettings('profile');
+      else if (act === 'logout') logout();
+    });
+    document.addEventListener('click', (e) => {
+      if (!menu.hidden && !menu.contains(e.target)) menu.hidden = true;
+    });
+  }
+
+  // 设置页
+  const setBack = $('#setBack');
+  if (setBack) setBack.addEventListener('click', closeSettings);
+  const setLogout = $('#setLogout');
+  if (setLogout) setLogout.addEventListener('click', () => logout());
+
   $('#userChip').addEventListener('click', () => logout());
   $('#newChannelBtn').addEventListener('click', () => { $('#fabPop').hidden = true; openNewChannelModal(); });
   $('#discoverBtn').addEventListener('click', () => { $('#fabPop').hidden = true; openDiscoverModal(); });
@@ -1237,11 +1337,9 @@ function bindAppEvents() {
     }
   });
 
-  // 输入区
+  // 输入区（富文本编辑区：表情以图片内嵌）
   const input = $('#input');
-  input.addEventListener('input', () => {
-    autosize(input);
-  });
+  input.addEventListener('input', autosizeInput);
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -1253,6 +1351,13 @@ function bindAppEvents() {
     if (files && files.length && files[0].type.startsWith('image/')) {
       e.preventDefault();
       uploadFile(files[0]);
+      return;
+    }
+    // 纯文本粘贴，避免带入外部样式
+    const text = e.clipboardData && e.clipboardData.getData('text/plain');
+    if (text != null) {
+      e.preventDefault();
+      document.execCommand('insertText', false, text);
     }
   });
 
@@ -1278,13 +1383,194 @@ function bindAppEvents() {
 }
 
 function doSend() {
-  const input = $('#input');
-  const text = input.value;
+  const text = inputText();
   if (!text.trim()) return;
-  input.value = '';
-  autosize(input);
+  setInputText('');
   sendMessage('text', text);
-  input.focus();
+  const host = $('#input');
+  if (host) host.focus();
+}
+
+/* ==================== 设置（Telegram 式：左侧分区 + 右侧内容） ==================== */
+
+const SET_SECTIONS = [
+  { id: 'profile', icon: 'i-members', label: '编辑资料' },
+  { id: 'notify', icon: 'i-bell', label: '通知和声音' },
+  { id: 'data', icon: 'i-info', label: '数据与存储' },
+  { id: 'about', icon: 'i-info', label: '关于' },
+];
+
+function openSettings(section = 'profile') {
+  state.settingsOpen = true;
+  state.settingsSection = section;
+  $('#settingsView').hidden = false;
+  setListOnly(false);
+  renderSettings();
+}
+
+function closeSettings() {
+  state.settingsOpen = false;
+  $('#settingsView').hidden = true;
+  if (!state.activeRoom) setListOnly(true);
+  else { renderHeader(); }
+}
+
+function renderSettings() {
+  const nav = $('#setList');
+  const body = $('#setBody');
+  const prof = $('#setProfile');
+  if (!nav || !body) return;
+
+  // 左上角个人资料块（头像 + 昵称 + 账号）
+  const u = state.user || {};
+  if (prof) {
+    prof.innerHTML = '';
+    prof.append(
+      avatarEl(u.nickname, u.avatarColor, 48),
+      el('div', { class: 'sp-info' },
+        el('div', { class: 'sp-name' }, richText(u.nickname || '')),
+        el('div', { class: 'sp-sub' }, '@' + (u.username || ''))));
+  }
+
+  // 分区列表
+  nav.innerHTML = '';
+  for (const s of SET_SECTIONS) {
+    const btn = el('button', {
+      type: 'button',
+      class: 'set-item' + (state.settingsSection === s.id ? ' active' : ''),
+      onClick: () => { state.settingsSection = s.id; renderSettings(); },
+    }, icon(s.icon), ' ' + s.label);
+    nav.append(btn);
+  }
+
+  // 右侧内容
+  body.innerHTML = '';
+  const head = el('div', { class: 'set-body-head' },
+    SET_SECTIONS.some((s) => s.id === state.settingsSection)
+      ? SET_SECTIONS.find((s) => s.id === state.settingsSection).label
+      : '设置');
+  body.append(head);
+  const pane = el('div', { class: 'set-pane' });
+  body.append(pane);
+
+  if (state.settingsSection === 'profile') renderProfilePane(pane);
+  else if (state.settingsSection === 'notify') renderNotifyPane(pane);
+  else if (state.settingsSection === 'data') renderDataPane(pane);
+  else renderAboutPane(pane);
+}
+
+function field(label, value, opts = {}) {
+  const wrap = el('div', { class: 'set-field' }, el('label', null, label));
+  const input = el('input', {
+    type: opts.type || 'text',
+    value: value == null ? '' : value,
+    placeholder: opts.placeholder || '',
+    maxlength: opts.maxlength || 40,
+    readonly: opts.readonly ? 'readonly' : null,
+  });
+  wrap.append(input);
+  if (opts.hint) wrap.append(el('div', { class: 'set-hint' }, opts.hint));
+  return { wrap, input };
+}
+
+function renderProfilePane(pane) {
+  const u = state.user || {};
+  const nick = field('昵称', u.nickname || '', { placeholder: '显示名称' });
+  pane.append(el('div', { class: 'set-group' },
+    el('div', { class: 'set-group-title' }, '账号'),
+    nick.wrap,
+    field('用户名', u.username || '', { readonly: true, hint: '用户名用于登录，注册后不可修改' }).wrap,
+    field('邮箱', (state.accountEmail || '已绑定'), { readonly: true, hint: '邮箱用于登录与找回账号' }).wrap));
+
+  // 头像颜色
+  const colors = ['#4f7cff', '#8b5cf6', '#34d399', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6', '#6366f1'];
+  let picked = u.avatarColor || colors[0];
+  const swatches = el('div', { class: 'set-colors' });
+  for (const c of colors) {
+    const dot = el('button', {
+      type: 'button',
+      class: 'set-color' + (c === picked ? ' active' : ''),
+      style: 'background:' + c,
+      onClick: () => {
+        picked = c;
+        swatches.querySelectorAll('.set-color').forEach((n) => n.classList.toggle('active', n === dot));
+      },
+    });
+    swatches.append(dot);
+  }
+  pane.append(el('div', { class: 'set-group' },
+    el('div', { class: 'set-group-title' }, '头像颜色'), swatches));
+
+  const save = el('button', { type: 'button', class: 'btn btn-primary set-save' }, '保存');
+  save.addEventListener('click', async () => {
+    save.disabled = true;
+    try {
+      const { user } = await api.updateProfile({ nickname: nick.input.value, avatarColor: picked });
+      if (user) {
+        state.user = user; setUser(user);
+      }
+      toast('资料已保存');
+      renderUserChip();
+      renderSettings();
+    } catch (e) {
+      toast(e.message || '保存失败', 'error');
+    } finally {
+      save.disabled = false;
+    }
+  });
+  pane.append(save);
+}
+
+function renderNotifyPane(pane) {
+  const on = notifyEnabled();
+  const row = el('div', { class: 'set-row' },
+    el('div', { class: 'set-row-main' },
+      el('div', { class: 'set-row-title' }, '消息通知'),
+      el('div', { class: 'set-row-sub' }, state.isElectron
+        ? '通过 Windows 系统通知提醒新消息'
+        : '通过浏览器通知提醒新消息')),
+    el('button', {
+      type: 'button',
+      class: 'switch' + (on ? ' on' : ''),
+      title: on ? '点击静音' : '点击开启',
+      onClick: () => { toggleNotify(); renderSettings(); },
+    }, el('span', { class: 'knob' })));
+  pane.append(el('div', { class: 'set-group' }, row));
+  if (!state.isElectron) {
+    pane.append(el('div', { class: 'set-note' },
+      '浏览器通知需要授权。若系统已禁止通知，请在浏览器设置中允许本站通知。'));
+  }
+}
+
+function renderDataPane(pane) {
+  const clear = el('div', { class: 'set-row set-row-btn' },
+    el('div', { class: 'set-row-main' },
+      el('div', { class: 'set-row-title' }, '清空本地未读标记'),
+      el('div', { class: 'set-row-sub' }, '仅清理本机记录的未读状态，不影响聊天记录')),
+    el('span', { class: 'set-row-arrow' }, '›'));
+  clear.addEventListener('click', () => {
+    for (const r of state.rooms) resetUnread(r.id);
+    renderRooms();
+    pushUnreadToShell();
+    toast('已清空本地未读标记');
+  });
+  pane.append(el('div', { class: 'set-group' }, clear,
+    el('div', { class: 'set-row' },
+      el('div', { class: 'set-row-main' },
+        el('div', { class: 'set-row-title' }, '消息记录'),
+        el('div', { class: 'set-row-sub' }, '聊天记录保存在账号中，换设备登录后自动同步')))));
+}
+
+function renderAboutPane(pane) {
+  pane.append(el('div', { class: 'set-group' },
+    el('div', { class: 'set-row' },
+      el('div', { class: 'set-row-main' },
+        el('div', { class: 'set-row-title' }, 'WMessage'),
+        el('div', { class: 'set-row-sub' }, '轻快 · 私密 · 安全'))),
+    el('div', { class: 'set-row' },
+      el('div', { class: 'set-row-main' },
+        el('div', { class: 'set-row-title' }, '版本'),
+        el('div', { class: 'set-row-sub' }, '1.0.0')))));
 }
 
 /* ==================== 退出 ==================== */
@@ -1316,3 +1602,4 @@ async function logout(reason = '') {
 
 /* ==================== 启动 ==================== */
 boot();
+
