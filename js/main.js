@@ -226,6 +226,8 @@ function enterApp() {
   bindAppEvents();
   renderUserChip();
   renderNotifyBtn();
+  bindShellMessages();
+  pushUnreadToShell();
   if (state.isMobile) {
     setMobileView('chats');
     renderMobilePanel();
@@ -374,6 +376,7 @@ async function openRoom(room) {
   state.online = [];
   resetUnread(room.id);
   renderRooms();
+  pushUnreadToShell();
   renderHeader();
   renderMembers();
   $('#messages').innerHTML = '';
@@ -685,6 +688,7 @@ function onIncomingMessage(msg) {
   if (!isOwn && (!isActive || document.hidden)) {
     bumpUnread(msg.roomId);
     notify(msg);
+    pushUnreadToShell();
     const item = document.querySelector(`.room-item[data-room-id="${CSS.escape(msg.roomId)}"]`);
     if (item) {
       const old = item.querySelector('.badge');
@@ -977,13 +981,30 @@ function confirmLeaveChannel() {
 /* ==================== 通知 / 更多菜单 ==================== */
 
 function renderNotifyBtn() {
+  const on = notifyEnabled();
   const btn = $('#notifyBtn');
-  if (btn) btn.classList.toggle('active', getNotify());
+  if (btn) {
+    btn.classList.toggle('active', on);
+    btn.title = state.isElectron ? (on ? '通知已开启（点击静音）' : '通知已静音（点击开启）') : '桌面通知';
+  }
   const st = $('#mNotifyState');
-  if (st) st.textContent = getNotify() ? '已开启' : '未开启';
+  if (st) st.textContent = on ? '已开启' : '未开启';
+}
+
+// 桌面端由外壳发系统通知，不需要浏览器授权；网页端沿用 Notification 权限
+function notifyEnabled() {
+  return getNotify(state.isElectron);
 }
 
 function toggleNotify() {
+  // 桌面端：原生应用语义，不需要"通知权限"，只是开启/静音
+  if (state.isElectron) {
+    const on = !notifyEnabled();
+    setNotify(on);
+    renderNotifyBtn();
+    toast(on ? '已开启通知' : '已静音通知');
+    return;
+  }
   if (!('Notification' in window)) return toast('当前环境不支持桌面通知');
   if (getNotify()) {
     setNotify(false);
@@ -1011,11 +1032,18 @@ function toggleNotify() {
 }
 
 function notify(msg) {
-  if (!getNotify() || !('Notification' in window) || Notification.permission !== 'granted') return;
+  if (!notifyEnabled()) return;
   if (document.visibilityState === 'visible' && state.activeRoom && state.activeRoom.id === msg.roomId) return;
+  const title = msg.nickname || '新消息';
   const body = msg.type === 'image' ? '[图片]' : (msg.content || '').slice(0, 120);
+  // 桌面端：交给外壳发 Windows 通知（点击通知可直接打开该会话）
+  if (state.isElectron) {
+    desktopCall('notify', { title, body, roomId: msg.roomId });
+    return;
+  }
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
   try {
-    const n = new Notification(msg.nickname || '新消息', {
+    const n = new Notification(title, {
       body,
       icon: './icons/icon-192.png',
       tag: 'wmessage-' + msg.roomId,
@@ -1029,6 +1057,27 @@ function notify(msg) {
   } catch {
     /* 某些环境不支持 */
   }
+}
+
+// 未读总数同步到系统托盘提示
+function pushUnreadToShell() {
+  if (!state.isElectron) return;
+  const all = getUnread();
+  let n = 0;
+  for (const k in all) n += all[k] || 0;
+  desktopCall('unread', { n });
+}
+
+// 接收外壳消息（如点击系统通知后打开对应会话）
+function bindShellMessages() {
+  if (!(window.chrome && window.chrome.webview && window.chrome.webview.addEventListener)) return;
+  window.chrome.webview.addEventListener('message', (ev) => {
+    const d = (ev && ev.data) || {};
+    if (d.action === 'openRoom' && d.roomId) {
+      const room = state.rooms.find((r) => r.id === d.roomId);
+      if (room) openRoom(room);
+    }
+  });
 }
 
 function toggleMoreMenu() {
