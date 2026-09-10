@@ -255,7 +255,7 @@ function renderMobileDmList() {
   list.innerHTML = '';
   const dms = state.rooms.filter((r) => r.type === 'dm').sort((a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0));
   if (!dms.length) {
-    list.append(el('div', { class: 'empty-list' }, '还没有私聊，<br>搜索用户或从频道成员列表发起'));
+    list.append(el('div', { class: 'empty-list' }, '还没有私聊，', el('br'), '搜索用户或从频道成员列表发起'));
     return;
   }
   list.append(el('div', { class: 'side-section' }, '私聊'));
@@ -311,7 +311,7 @@ function renderRooms() {
   if (!list) return;
   list.innerHTML = '';
   if (!state.rooms.length) {
-    list.append(el('div', { class: 'empty-list' }, '还没有会话，<br>下方「新建频道」或「发现」加入频道，<br>也可以搜索用户发起私聊。'));
+    list.append(el('div', { class: 'empty-list' }, '还没有会话，', el('br'), '下方「新建频道」或「发现」加入频道，', el('br'), '也可以搜索用户发起私聊。'));
     return;
   }
   const sort = (a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0) || (b.joinedAt || 0) - (a.joinedAt || 0);
