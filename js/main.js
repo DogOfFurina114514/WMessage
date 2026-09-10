@@ -5,7 +5,7 @@ import {
 } from './store.js';
 import * as api from './supabase.js';
 import { EMOJIS } from './emoji.js';
-import { $, el, toast, modal, avatarEl, formatTime, formatListTime, formatDay, dayKey, lightbox } from './ui.js';
+import { $, el, icon, toast, modal, avatarEl, formatTime, formatListTime, formatDay, dayKey, lightbox } from './ui.js';
 
 const $app = $('#app');
 
@@ -494,7 +494,7 @@ function showEmpty(text) {
   msgs.innerHTML = '';
   msgs.append(el('div', { class: 'empty' },
     el('div', null,
-      el('div', { class: 'big' }, '<svg class="ic"><use href="#i-chat"></use></svg>'),
+      el('div', { class: 'big' }, icon('i-chat')),
       el('div', null, text))));
 }
 
