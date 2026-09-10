@@ -76,6 +76,47 @@ html.theme-web .room-title {
 
 /* 弹窗/列表等浮层渐变呼吸 */
 html.theme-web .toast {
-  background: rgba(13, 32, 44, 0.85);
-  border-color: rgba(79, 172, 254, 0.35);
+  background: rgba(23, 33, 43, 0.92);
+  border-color: rgba(82, 136, 193, 0.45);
 }
+
+/* ============ 主界面：Telegram Night 配色（登录页保留海洋玻璃质感） ============ */
+html.theme-web .app {
+  --bg: #0e1621;
+  --panel: #17212b;
+  --panel-2: #202b36;
+  --hover: #202b36;
+  --search-bg: #242f3d;
+  --pop-bg: #1c2733;
+  --border: #ffffff0f;
+  --border-2: #ffffff1f;
+  --text: #ffffff;
+  --muted: #7f91a4;
+  --muted-2: #6c7883;
+  --accent: #5288c1;
+  --accent-2: #64b5ef;
+  --green: #4dcd5e;
+  --red: #e05a5a;
+  --scrollbar: #2f3b47;
+  --badge: #4082bc;
+  --day-pill: rgba(0, 0, 0, .22);
+  --bubble: #182533;
+  --bubble-own: #2b5278;
+  --bubble-own-text: #ffffff;
+  --name-color: #64b5ef;
+  --time-in-bubble: #7f91a4;
+  --time-in-bubble-own: rgba(255, 255, 255, .62);
+  --item-active: #2b5278;
+  --radius-bubble: 14px;
+  --glass-blur: none;
+  --surface: #17212bf0;
+  --surface-strong: #1c2733f0;
+  background: var(--bg);
+}
+html.theme-web .app .t-bubbles { display: none; }   /* 主界面不再显示海洋气泡背景 */
+html.theme-web .app .sidebar { border-right: 1px solid #0a1017; }
+html.theme-web .app .main-header { border-bottom: 1px solid #0a1017; }
+html.theme-web .app .room-title { text-shadow: none; }
+html.theme-web .app .icon-btn { background: transparent; border: none; border-radius: 10px; color: var(--muted); }
+html.theme-web .app .icon-btn:hover { background: var(--panel-2); color: var(--text); }
+html.theme-web .app .bubble { border: none; }
