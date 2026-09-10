@@ -25,8 +25,6 @@ const state = {
   typingClearTimer: null,
   pending: new Map(), // clientId -> msg
   mobileView: 'chats',
-  settingsOpen: false,
-  settingsSection: 'profile',
   accountEmail: '',
   folder: 'all',
   replyTo: null,
@@ -158,21 +156,6 @@ function appTemplate() {
     <div class="backdrop" id="backdrop" hidden></div>
 
     <main class="main">
-      <section class="settings" id="settingsView" hidden>
-        <aside class="set-nav">
-          <div class="set-nav-head">
-            <button class="icon-btn" id="setBack" title="返回"><svg class="ic"><use href="#i-back"></use></svg></button>
-            <span>设置</span>
-          </div>
-          <div class="set-profile" id="setProfile"></div>
-          <div class="set-list" id="setList"></div>
-          <div class="set-foot">
-            <button type="button" class="set-item danger" id="setLogout"><svg class="ic"><use href="#i-logout"></use></svg> 退出登录</button>
-          </div>
-        </aside>
-        <div class="set-body" id="setBody"></div>
-      </section>
-
       <header class="main-header">
         <button class="icon-btn back" id="backBtn"><svg class="ic"><use href="#i-menu"></use></svg></button>
         <div class="head-avatar" id="headAvatar" hidden></div>
@@ -550,12 +533,6 @@ async function openRoom(room) {
   state.replyTo = null;
   renderReplyBar();
   toggleChatSearch(false);
-  // 打开会话时退出设置页
-  if (state.settingsOpen) {
-    state.settingsOpen = false;
-    const sv = $('#settingsView');
-    if (sv) sv.hidden = true;
-  }
   setListOnly(false);
   resetUnread(room.id);
   renderRooms();
@@ -1548,10 +1525,6 @@ function bindAppEvents() {
   }
 
   // 设置页
-  const setBack = $('#setBack');
-  if (setBack) setBack.addEventListener('click', closeSettings);
-  const setLogout = $('#setLogout');
-  if (setLogout) setLogout.addEventListener('click', () => logout());
 
   $('#userChip').addEventListener('click', () => logout());
   $('#newChannelBtn').addEventListener('click', () => { $('#fabPop').hidden = true; openNewChannelModal(); });
@@ -1707,188 +1680,6 @@ function openSettingsWindow() {
   if (win) win.focus();
   else toast('设置窗口被浏览器拦截，请允许弹出窗口', 'error');
 }
-/* ==================== 设置（Telegram 式：左侧分区 + 右侧内容） ==================== */
-
-const SET_SECTIONS = [
-  { id: 'profile', icon: 'i-members', label: '编辑资料' },
-  { id: 'notify', icon: 'i-bell', label: '通知和声音' },
-  { id: 'data', icon: 'i-info', label: '数据与存储' },
-  { id: 'about', icon: 'i-info', label: '关于' },
-];
-
-function openSettings(section = 'profile') {
-  state.settingsOpen = true;
-  state.settingsSection = section;
-  $('#settingsView').hidden = false;
-  setListOnly(false);
-  renderSettings();
-}
-
-function closeSettings() {
-  state.settingsOpen = false;
-  $('#settingsView').hidden = true;
-  if (!state.activeRoom) setListOnly(true);
-  else { renderHeader(); }
-}
-
-function renderSettings() {
-  const nav = $('#setList');
-  const body = $('#setBody');
-  const prof = $('#setProfile');
-  if (!nav || !body) return;
-
-  // 左上角个人资料块（头像 + 昵称 + 账号）
-  const u = state.user || {};
-  if (prof) {
-    prof.innerHTML = '';
-    prof.append(
-      avatarEl(u.nickname, u.avatarColor, 48),
-      el('div', { class: 'sp-info' },
-        el('div', { class: 'sp-name' }, richText(u.nickname || '')),
-        el('div', { class: 'sp-sub' }, '@' + (u.username || ''))));
-  }
-
-  // 分区列表
-  nav.innerHTML = '';
-  for (const s of SET_SECTIONS) {
-    const btn = el('button', {
-      type: 'button',
-      class: 'set-item' + (state.settingsSection === s.id ? ' active' : ''),
-      onClick: () => { state.settingsSection = s.id; renderSettings(); },
-    }, icon(s.icon), ' ' + s.label);
-    nav.append(btn);
-  }
-
-  // 右侧内容
-  body.innerHTML = '';
-  const head = el('div', { class: 'set-body-head' },
-    SET_SECTIONS.some((s) => s.id === state.settingsSection)
-      ? SET_SECTIONS.find((s) => s.id === state.settingsSection).label
-      : '设置');
-  body.append(head);
-  const pane = el('div', { class: 'set-pane' });
-  body.append(pane);
-
-  if (state.settingsSection === 'profile') renderProfilePane(pane);
-  else if (state.settingsSection === 'notify') renderNotifyPane(pane);
-  else if (state.settingsSection === 'data') renderDataPane(pane);
-  else renderAboutPane(pane);
-}
-
-function field(label, value, opts = {}) {
-  const wrap = el('div', { class: 'set-field' }, el('label', null, label));
-  const input = el('input', {
-    type: opts.type || 'text',
-    value: value == null ? '' : value,
-    placeholder: opts.placeholder || '',
-    maxlength: opts.maxlength || 40,
-    readonly: opts.readonly ? 'readonly' : null,
-  });
-  wrap.append(input);
-  if (opts.hint) wrap.append(el('div', { class: 'set-hint' }, opts.hint));
-  return { wrap, input };
-}
-
-function renderProfilePane(pane) {
-  const u = state.user || {};
-  const nick = field('昵称', u.nickname || '', { placeholder: '显示名称' });
-  pane.append(el('div', { class: 'set-group' },
-    el('div', { class: 'set-group-title' }, '账号'),
-    nick.wrap,
-    field('用户名', u.username || '', { readonly: true, hint: '用户名用于登录，注册后不可修改' }).wrap,
-    field('邮箱', (state.accountEmail || '已绑定'), { readonly: true, hint: '邮箱用于登录与找回账号' }).wrap));
-
-  // 头像颜色
-  const colors = ['#4f7cff', '#8b5cf6', '#34d399', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6', '#6366f1'];
-  let picked = u.avatarColor || colors[0];
-  const swatches = el('div', { class: 'set-colors' });
-  for (const c of colors) {
-    const dot = el('button', {
-      type: 'button',
-      class: 'set-color' + (c === picked ? ' active' : ''),
-      style: 'background:' + c,
-      onClick: () => {
-        picked = c;
-        swatches.querySelectorAll('.set-color').forEach((n) => n.classList.toggle('active', n === dot));
-      },
-    });
-    swatches.append(dot);
-  }
-  pane.append(el('div', { class: 'set-group' },
-    el('div', { class: 'set-group-title' }, '头像颜色'), swatches));
-
-  const save = el('button', { type: 'button', class: 'btn btn-primary set-save' }, '保存');
-  save.addEventListener('click', async () => {
-    save.disabled = true;
-    try {
-      const { user } = await api.updateProfile({ nickname: nick.input.value, avatarColor: picked });
-      if (user) {
-        state.user = user; setUser(user);
-      }
-      toast('资料已保存');
-      renderUserChip();
-      renderSettings();
-    } catch (e) {
-      toast(e.message || '保存失败', 'error');
-    } finally {
-      save.disabled = false;
-    }
-  });
-  pane.append(save);
-}
-
-function renderNotifyPane(pane) {
-  const on = notifyEnabled();
-  const row = el('div', { class: 'set-row' },
-    el('div', { class: 'set-row-main' },
-      el('div', { class: 'set-row-title' }, '消息通知'),
-      el('div', { class: 'set-row-sub' }, state.isElectron
-        ? '通过 Windows 系统通知提醒新消息'
-        : '通过浏览器通知提醒新消息')),
-    el('button', {
-      type: 'button',
-      class: 'switch' + (on ? ' on' : ''),
-      title: on ? '点击静音' : '点击开启',
-      onClick: () => { toggleNotify(); renderSettings(); },
-    }, el('span', { class: 'knob' })));
-  pane.append(el('div', { class: 'set-group' }, row));
-  if (!state.isElectron) {
-    pane.append(el('div', { class: 'set-note' },
-      '浏览器通知需要授权。若系统已禁止通知，请在浏览器设置中允许本站通知。'));
-  }
-}
-
-function renderDataPane(pane) {
-  const clear = el('div', { class: 'set-row set-row-btn' },
-    el('div', { class: 'set-row-main' },
-      el('div', { class: 'set-row-title' }, '清空本地未读标记'),
-      el('div', { class: 'set-row-sub' }, '仅清理本机记录的未读状态，不影响聊天记录')),
-    el('span', { class: 'set-row-arrow' }, '›'));
-  clear.addEventListener('click', () => {
-    for (const r of state.rooms) resetUnread(r.id);
-    renderRooms();
-    pushUnreadToShell();
-    toast('已清空本地未读标记');
-  });
-  pane.append(el('div', { class: 'set-group' }, clear,
-    el('div', { class: 'set-row' },
-      el('div', { class: 'set-row-main' },
-        el('div', { class: 'set-row-title' }, '消息记录'),
-        el('div', { class: 'set-row-sub' }, '聊天记录保存在账号中，换设备登录后自动同步')))));
-}
-
-function renderAboutPane(pane) {
-  pane.append(el('div', { class: 'set-group' },
-    el('div', { class: 'set-row' },
-      el('div', { class: 'set-row-main' },
-        el('div', { class: 'set-row-title' }, 'WMessage'),
-        el('div', { class: 'set-row-sub' }, '轻快 · 私密 · 安全'))),
-    el('div', { class: 'set-row' },
-      el('div', { class: 'set-row-main' },
-        el('div', { class: 'set-row-title' }, '版本'),
-        el('div', { class: 'set-row-sub' }, '1.0.0')))));
-}
-
 /* ==================== 退出 ==================== */
 
 async function logout(reason = '') {
@@ -1918,6 +1709,8 @@ async function logout(reason = '') {
 
 /* ==================== 启动 ==================== */
 boot();
+
+
 
 
 
