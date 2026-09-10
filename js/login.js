@@ -115,25 +115,33 @@ function showVerifyModal(email) {
 function bindAuth() {
   let mode = 'login';
   const tabs = $app.querySelectorAll('.tab');
+
+  // 按当前模式同步表单：隐藏字段绝不参与浏览器校验（否则提交会被静默拦截）
+  function applyMode() {
+    const isReg = mode === 'register';
+    $('#userField').hidden = !isReg;
+    $('#userField input').required = isReg;
+    $('#nickField').hidden = !isReg;
+    $('#emailLabel').textContent = isReg ? '邮箱' : '账号';
+    $('#authEmail').placeholder = isReg ? '注册请使用邮箱（you@example.com）' : '用户名或邮箱';
+    $('#authSubmit').textContent = isReg ? '注 册' : '登 录';
+    $('#authTip').textContent = isReg ? '已有账号？点击「登录」' : '还没有账号？点击「注册」创建';
+    $('#authError').textContent = '';
+    setDesktopTitle(isReg ? 'WMessage 注册' : 'WMessage 登录');
+    setTimeout(reportSize, 150);
+    setTimeout(reportSize, 350);
+  }
+
   tabs.forEach((tab) => {
     tab.addEventListener('click', () => {
       mode = tab.dataset.mode;
       tabs.forEach((t) => t.classList.toggle('active', t === tab));
-      $('#userField').hidden = mode !== 'register';
-      $('#userField input').required = mode === 'register';
-      $('#nickField').hidden = mode !== 'register';
-      $('#emailLabel').textContent = mode === 'register' ? '邮箱' : '账号';
-      $('#authEmail').placeholder = mode === 'register' ? '注册请使用邮箱（you@example.com）' : '用户名或邮箱';
-      $('#authSubmit').textContent = mode === 'login' ? '登 录' : '注 册';
-      $('#authTip').textContent = mode === 'login' ? '还没有账号？点击「注册」创建' : '已有账号？点击「登录」';
-      $('#authError').textContent = '';
-      setDesktopTitle(mode === 'register' ? 'WMessage 注册' : 'WMessage 登录');
-      setTimeout(reportSize, 150);
-      setTimeout(reportSize, 350);
+      applyMode();
     });
   });
 
-  setDesktopTitle('WMessage 登录');
+  // 初始即为登录模式：显式同步一次，避免隐藏字段带 required 阻断提交
+  applyMode();
   watchCardResize();
 
   // 深链：#register（如邀请邮件）直达注册标签
