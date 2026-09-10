@@ -200,10 +200,16 @@ function bindAuth() {
       // 进入主界面（index.html 会检测登录态）
       location.href = './index.html';
     } catch (err) {
-      if (err.code === 'EMAIL_NOT_CONFIRMED') {
-        showVerifyModal(email);
-      } else {
-        $('#authError').textContent = err.message;
+      // 任何失败都必须在界面上可见：先保证有提示，再尝试更丰富的弹窗
+      const msg = (err && (err.message || err.error_description)) || String(err) || '登录失败，请稍后重试';
+      $('#authError').textContent = msg;
+      if (err && err.code === 'EMAIL_NOT_CONFIRMED') {
+        try {
+          showVerifyModal(email);
+        } catch (e) {
+          // 弹窗构建失败也不能吞掉错误：红色提示已显示具体原因
+          console.error('验证弹窗打开失败', e);
+        }
       }
     } finally {
       btn.disabled = false;
@@ -212,5 +218,17 @@ function bindAuth() {
 }
 
 /* ==================== 启动 ==================== */
+// 兜底：任何未捕获异常都要在界面上可见，避免"点了没反应"
+function surfaceError(text) {
+  const box = document.getElementById('authError');
+  if (box && !box.textContent) box.textContent = text;
+  console.error('[WMessage]', text);
+}
+window.addEventListener('error', (e) => surfaceError((e && e.message) || '页面运行出错'));
+window.addEventListener('unhandledrejection', (e) => {
+  const r = (e && e.reason) || {};
+  surfaceError(r.message || String(r) || '操作未能完成');
+});
+
 detectPlatform();
 bindAuth();
