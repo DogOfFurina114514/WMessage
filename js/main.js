@@ -28,6 +28,9 @@ const state = {
   settingsOpen: false,
   settingsSection: 'profile',
   accountEmail: '',
+  folder: 'all',
+  replyTo: null,
+  chatQuery: '',
 };
 
 /* ==================== 平台检测与主题 ====================
@@ -178,9 +181,16 @@ function appTemplate() {
           <div class="room-sub" id="roomSub">选择一个会话开始聊天</div>
         </div>
         <div class="header-actions">
+          <button class="icon-btn" id="chatSearchBtn" title="在聊天中搜索" hidden><svg class="ic"><use href="#i-search"></use></svg></button>
           <button class="icon-btn" id="membersBtn" title="成员列表" hidden><svg class="ic"><use href="#i-members"></use></svg></button>
           <button class="icon-btn" id="moreBtn" title="更多" hidden><svg class="ic"><use href="#i-more"></use></svg></button>
           <div class="more-pop" id="morePop" hidden></div>
+        </div>
+        <div class="chat-search" id="chatSearch" hidden>
+          <svg class="ic search-ic"><use href="#i-search"></use></svg>
+          <input id="chatSearchInput" placeholder="在此聊天中搜索" autocomplete="off">
+          <span class="cs-count" id="chatSearchCount"></span>
+          <button class="icon-btn" id="chatSearchClose" title="关闭"><svg class="ic"><use href="#i-close"></use></svg></button>
         </div>
       </header>
       <div class="messages-area">
@@ -364,26 +374,74 @@ function renderRooms() {
   const list = $('#roomList');
   if (!list) return;
   list.innerHTML = '';
+  renderFolderTabs();
   if (!state.rooms.length) {
     list.append(el('div', { class: 'empty-list' }, '还没有会话', el('br'), '点右下角按钮新建或发现频道', el('br'), '也可以搜索用户发起私聊'));
     return;
   }
   const sort = (a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0) || (b.joinedAt || 0) - (a.joinedAt || 0);
-  const channels = state.rooms.filter((r) => r.type === 'channel').sort(sort);
-  const dms = state.rooms.filter((r) => r.type === 'dm').sort(sort);
+  // 文件夹分页：全部 / 未读 / 已置顶；（置顶始终排最前）
+  let pool = state.rooms.slice();
+  if (state.folder === 'unread') {
+    const unread = getUnread();
+    pool = pool.filter((r) => (unread[r.id] || 0) > 0);
+  } else if (state.folder === 'pinned') {
+    pool = pool.filter((r) => r.pinned);
+  }
+  const pinned = pool.filter((r) => r.pinned).sort(sort);
+  const rest = pool.filter((r) => !r.pinned);
+  const channels = rest.filter((r) => r.type === 'channel').sort(sort);
+  const dms = rest.filter((r) => r.type === 'dm').sort(sort);
+
+  if (!pool.length) {
+    list.append(el('div', { class: 'empty-list' }, '没有未读消息'));
+    if (state.isMobile) renderMobileDmList();
+    return;
+  }
 
   const section = (title, rooms) => {
     if (!rooms.length) return null;
     const wrap = el('div');
-    wrap.append(el('div', { class: 'side-section' }, title));
+    if (title) wrap.append(el('div', { class: 'side-section' }, title));
     for (const r of rooms) wrap.append(roomItem(r));
     return wrap;
   };
+  const p = section('已置顶', pinned);
   const ch = section('频道', channels);
   const dm = section('私聊', dms);
+  if (p) list.append(p);
   if (ch) list.append(ch);
   if (dm) list.append(dm);
   if (state.isMobile) renderMobileDmList();
+}
+
+// 侧栏文件夹分页（全部 / 未读 / 已置顶）
+function renderFolderTabs() {
+  const host = $('#sidebar');
+  if (!host) return;
+  let bar = document.getElementById('folderTabs');
+  if (!bar) {
+    bar = el('div', { class: 'folders', id: 'folderTabs' });
+    const head = host.querySelector('.side-head');
+    if (head && head.nextSibling) host.insertBefore(bar, head.nextSibling);
+    else host.prepend(bar);
+  }
+  const unread = getUnread();
+  const unreadCount = state.rooms.reduce((n, r) => n + ((unread[r.id] || 0) > 0 ? 1 : 0), 0);
+  const tabs = [
+    { id: 'all', label: '全部' },
+    { id: 'unread', label: unreadCount ? '未读 ' + unreadCount : '未读' },
+    { id: 'pinned', label: '已置顶' },
+  ];
+  bar.innerHTML = '';
+  for (const t of tabs) {
+    const b = el('button', {
+      type: 'button',
+      class: 'folder-tab' + (state.folder === t.id ? ' active' : ''),
+      onClick: () => { state.folder = t.id; renderRooms(); },
+    }, t.label);
+    bar.append(b);
+  }
 }
 
 function roomItem(r) {
@@ -392,19 +450,88 @@ function roomItem(r) {
     ? (r.lastMessageType === 'image' ? '[图片]' : r.lastMessage)
     : (r.type === 'channel' ? '点击进入频道' : '点击开始聊天');
   const item = el('div', {
-    class: 'room-item' + (state.activeRoom && state.activeRoom.id === r.id ? ' active' : ''),
+    class: 'room-item'
+      + (state.activeRoom && state.activeRoom.id === r.id ? ' active' : '')
+      + (r.muted ? ' muted' : '')
+      + (unread && !r.muted ? ' unread' : ''),
     dataset: { roomId: r.id },
   },
     roomAvatar(r),
     el('div', { class: 'room-info' },
-      el('div', { class: 'room-name' }, richText(roomDisplayName(r))),
+      el('div', { class: 'room-name' },
+        r.pinned ? icon('i-pin', 'ic ic-sm pin-ic') : null,
+        richText(roomDisplayName(r))),
       el('div', { class: 'room-preview' }, richText(preview))),
     el('div', { class: 'room-meta' },
       el('div', { class: 'room-time' }, formatListTime(r.lastMessageAt)),
+      r.muted ? icon('i-bell-off', 'ic ic-sm mute-ic') : null,
       unread ? el('div', { class: 'badge' }, unread > 99 ? '99+' : unread) : null)
   );
   item.addEventListener('click', () => openRoom(r));
+  item.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    openRoomMenu(r, e.clientX, e.clientY);
+  });
   return item;
+}
+
+/* ==================== 会话右键菜单（置顶 / 静音 / 清空） ==================== */
+
+function openRoomMenu(room, x, y) {
+  closeRoomMenu();
+  const menu = el('div', { class: 'ctx-menu', id: 'roomCtxMenu' });
+  const add = (label, iconId, fn, danger) => {
+    const b = el('button', { type: 'button', class: danger ? 'danger' : '' }, icon(iconId), ' ' + label);
+    b.addEventListener('click', async () => {
+      closeRoomMenu();
+      await fn();
+    });
+    menu.append(b);
+  };
+  add(room.pinned ? '取消置顶' : '置顶会话', 'i-pin', async () => {
+    await api.setMemberFlag(room.id, { pinned: !room.pinned });
+    room.pinned = !room.pinned;
+    toast(room.pinned ? '已置顶' : '已取消置顶');
+    renderRooms();
+  });
+  add(room.muted ? '取消静音' : '静音通知', 'i-bell-off', async () => {
+    await api.setMemberFlag(room.id, { muted: !room.muted });
+    room.muted = !room.muted;
+    toast(room.muted ? '已静音' : '已取消静音');
+    renderRooms();
+  });
+  add('清空聊天记录', 'i-close', async () => {
+    const ok = await confirmDialog({
+      title: '清空聊天记录',
+      text: '将清空「' + roomDisplayName(room) + '」的聊天记录（仅对你隐藏，其他成员不受影响）。',
+      okLabel: '清空',
+      cancelLabel: '取消',
+    });
+    if (!ok) return;
+    await api.setMemberFlag(room.id, { cleared_at: new Date().toISOString() });
+    room.clearedAt = Date.now();
+    room.lastMessage = null;
+    room.lastMessageAt = null;
+    if (state.activeRoom && state.activeRoom.id === room.id) {
+      roomCache(room.id).list = [];
+      renderAllMessages(room.id);
+    }
+    renderRooms();
+    toast('已清空聊天记录');
+  });
+  document.body.append(menu);
+  const rect = menu.getBoundingClientRect();
+  menu.style.left = Math.min(x, window.innerWidth - rect.width - 8) + 'px';
+  menu.style.top = Math.min(y, window.innerHeight - rect.height - 8) + 'px';
+  setTimeout(() => {
+    const off = (ev) => { if (!menu.contains(ev.target)) { closeRoomMenu(); document.removeEventListener('mousedown', off); } };
+    document.addEventListener('mousedown', off);
+  }, 0);
+}
+
+function closeRoomMenu() {
+  const m = document.getElementById('roomCtxMenu');
+  if (m) m.remove();
 }
 
 /* ==================== 打开会话 ==================== */
@@ -419,6 +546,10 @@ async function openRoom(room) {
   state.roomInfo = null;
   state.members = [];
   state.online = [];
+  // 切换会话时重置搜索与回复状态
+  state.replyTo = null;
+  renderReplyBar();
+  toggleChatSearch(false);
   // 打开会话时退出设置页
   if (state.settingsOpen) {
     state.settingsOpen = false;
@@ -526,6 +657,8 @@ function renderHeader() {
   }
   const mem = $('#membersBtn');
   if (mem) mem.hidden = false;
+  const csBtn = $('#chatSearchBtn');
+  if (csBtn) csBtn.hidden = false;
 
   // 头部头像（Telegram 风格：会话头像常驻标题左侧）
   const slot = $('#headAvatar');
@@ -604,21 +737,172 @@ function buildMessageNode(msg, prevMsg) {
   });
   if (!grouped && !own) wrap.append(avatarEl(msg.nickname, msg.avatarColor, 36));
   const body = el('div', { class: 'msg-body' });
+  // 引用块（回复）
+  const replyBlock = msg.reply
+    ? el('div', { class: 'reply-quote', onClick: () => jumpToMessage(msg.reply.id) },
+        el('div', { class: 'rq-name' }, richText(msg.reply.nickname || '')),
+        el('div', { class: 'rq-text' }, msg.reply.type === 'image' ? '[图片]' : richText(msg.reply.content || '')))
+    : null;
   if (msg.type === 'image') {
     const img = el('img', { class: 'msg-img', src: imgSrc(msg.content), alt: '图片', loading: 'lazy' });
     img.addEventListener('click', () => lightbox(imgSrc(msg.content)));
-    body.append(el('div', { class: 'bubble media' }, img, el('span', { class: 'bubble-time' }, formatTime(msg.createdAt))));
+    const bubble = el('div', { class: 'bubble media' }, img, el('span', { class: 'bubble-time' }, formatTime(msg.createdAt)));
+    if (replyBlock) body.append(el('div', { class: 'bubble wrap-quote' }, replyBlock));
+    body.append(bubble);
   } else {
     const bubble = el('div', { class: 'bubble' });
     if (!own && state.activeRoom && state.activeRoom.type === 'channel' && !grouped) {
-      bubble.append(el('div', { class: 'bubble-name' }, msg.nickname || ''));
+      bubble.append(el('div', { class: 'bubble-name' }, richText(msg.nickname || '')));
     }
+    if (replyBlock) bubble.append(el('div', { class: 'bubble-quote' }, replyBlock));
     bubble.append(el('div', { class: 'bubble-text' }, richText(msg.content)));
     bubble.append(el('span', { class: 'bubble-time' }, formatTime(msg.createdAt)));
     body.append(bubble);
   }
   wrap.append(body);
+  wrap.append(messageActions(msg, own));
   return wrap;
+}
+
+// 悬停操作条：回复 / 转发 / 复制 / 删除（Telegram 式）
+function messageActions(msg, own) {
+  const bar = el('div', { class: 'msg-actions' });
+  const mk = (iconId, title, fn, danger) => {
+    const b = el('button', { type: 'button', class: 'ma-btn' + (danger ? ' danger' : ''), title },
+      icon(iconId));
+    b.addEventListener('click', (e) => { e.stopPropagation(); fn(); });
+    return b;
+  };
+  bar.append(mk('i-back', '回复', () => startReply(msg)));
+  bar.append(mk('i-send', '转发', () => openForwardModal(msg)));
+  bar.append(mk('i-more', '复制', () => {
+    const text = msg.type === 'image' ? msg.content : msg.content;
+    navigator.clipboard?.writeText(text).then(() => toast('已复制'), () => toast('复制失败', 'error'));
+  }));
+  if (own) bar.append(mk('i-close', '删除', () => confirmDeleteMessage(msg), true));
+  return bar;
+}
+
+function startReply(msg) {
+  state.replyTo = msg;
+  renderReplyBar();
+  const host = $('#input');
+  if (host) host.focus();
+}
+
+function renderReplyBar() {
+  const foot = document.querySelector('.composer');
+  if (!foot) return;
+  let bar = document.getElementById('replyBar');
+  if (!state.replyTo) {
+    if (bar) bar.remove();
+    return;
+  }
+  if (!bar) {
+    bar = el('div', { class: 'reply-bar', id: 'replyBar' });
+    foot.parentNode.insertBefore(bar, foot);
+  }
+  bar.innerHTML = '';
+  bar.append(
+    el('div', { class: 'rb-info' },
+      el('div', { class: 'rb-name' }, '回复 ' + (state.replyTo.nickname || '')),
+      el('div', { class: 'rb-text' }, state.replyTo.type === 'image' ? '[图片]' : richText((state.replyTo.content || '').slice(0, 80)))),
+    el('button', { type: 'button', class: 'icon-btn', title: '取消回复', onClick: () => { state.replyTo = null; renderReplyBar(); } },
+      icon('i-close')));
+}
+
+async function confirmDeleteMessage(msg) {
+  const ok = await confirmDialog({ title: '删除消息', text: '确定删除这条消息吗？删除后对其他成员同样不可见。', okLabel: '删除', cancelLabel: '取消' });
+  if (!ok) return;
+  try {
+    await api.deleteMessage(msg.id);
+    const c = roomCache(msg.roomId);
+    c.list = c.list.filter((m) => m.id !== msg.id);
+    const node = document.querySelector('.msg[data-mid="' + CSS.escape(msg.id) + '"]');
+    if (node) node.remove();
+    toast('已删除');
+  } catch (e) {
+    toast(e.message || '删除失败', 'error');
+  }
+}
+
+function jumpToMessage(id) {
+  const node = document.querySelector('.msg[data-mid="' + CSS.escape(id) + '"]');
+  if (!node) return toast('原消息不在当前视图');
+  node.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  node.classList.add('flash');
+  setTimeout(() => node.classList.remove('flash'), 1200);
+}
+
+/* ==================== 聊天内搜索 ==================== */
+
+function toggleChatSearch(force) {
+  const bar = $('#chatSearch');
+  if (!bar) return;
+  const show = force === undefined ? bar.hidden : !!force;
+  bar.hidden = !show;
+  const inp = $('#chatSearchInput');
+  if (show && inp) { inp.value = ''; inp.focus(); }
+  applyChatSearch('');
+}
+
+// 在当前会话内过滤消息：仅保留命中项并计数
+function applyChatSearch(q) {
+  state.chatQuery = q || '';
+  const msgs = $('#messages');
+  const counter = $('#chatSearchCount');
+  if (!msgs) return;
+  const nodes = msgs.querySelectorAll('.msg');
+  if (!state.chatQuery) {
+    nodes.forEach((n) => { n.hidden = false; n.classList.remove('hit'); });
+    if (counter) counter.textContent = '';
+    return;
+  }
+  const needle = state.chatQuery.toLowerCase();
+  let hits = 0;
+  nodes.forEach((n) => {
+    const body = n.querySelector('.bubble-text');
+    const text = body ? body.textContent : '';
+    const hit = text.toLowerCase().includes(needle);
+    n.hidden = !hit;
+    n.classList.toggle('hit', hit);
+    if (hit) hits++;
+  });
+  if (counter) counter.textContent = hits ? hits + ' 条' : '无结果';
+}
+
+// 转发：选择目标会话后发送
+function openForwardModal(msg) {
+  const body = el('div', { class: 'modal-list' });
+  const rooms = state.rooms.filter((r) => r.id !== msg.roomId);
+  if (!rooms.length) {
+    body.append(el('div', { class: 'empty-list' }, '暂无可转发的其他会话'));
+  }
+  const m = modal({ title: '转发到', body });
+  for (const r of rooms) {
+    const row = el('div', { class: 'modal-row' },
+      avatarEl(r.type === 'dm' && r.partner ? r.partner.nickname : r.name, r.type === 'dm' && r.partner ? r.partner.avatarColor : '#5288c1', 34),
+      el('div', { class: 'grow' },
+        el('div', { class: 'name' }, richText(roomDisplayName(r))),
+        el('div', { class: 'desc' }, r.type === 'dm' ? '私聊' : '频道')));
+    row.addEventListener('click', async () => {
+      m.close();
+      try {
+        const sent = await api.sendMessage({
+          roomId: r.id, userId: state.user.id, clientId: 'f' + Date.now() + Math.random().toString(36).slice(2, 6),
+          type: 'text', content: (msg.type === 'image' ? '[图片] ' : '') + (msg.content || ''),
+        });
+        toast('已转发到 ' + roomDisplayName(r));
+        if (state.activeRoom && state.activeRoom.id === sent.roomId) {
+          roomCache(sent.roomId).list.push(sent);
+          appendMessageNode(sent);
+        }
+      } catch (e) {
+        toast(e.message || '转发失败', 'error');
+      }
+    });
+    body.append(row);
+  }
 }
 
 function daySepEl(ts) {
@@ -770,7 +1054,8 @@ function onIncomingMessage(msg) {
   const isActive = state.activeRoom && state.activeRoom.id === msg.roomId;
   if (!isOwn && (!isActive || document.hidden)) {
     bumpUnread(msg.roomId);
-    notify(msg);
+    const room = state.rooms.find((r) => r.id === msg.roomId);
+    if (!room || !room.muted) notify(msg);
     pushUnreadToShell();
     const item = document.querySelector(`.room-item[data-room-id="${CSS.escape(msg.roomId)}"]`);
     if (item) {
@@ -1254,7 +1539,7 @@ function bindAppEvents() {
       const act = btn.dataset.act;
       if (act === 'new') openNewChannelModal();
       else if (act === 'discover') openDiscoverModal();
-      else if (act === 'settings') openSettings('profile');
+      else if (act === 'settings') openSettingsWindow();
       else if (act === 'logout') logout();
     });
     document.addEventListener('click', (e) => {
@@ -1337,6 +1622,17 @@ function bindAppEvents() {
     }
   });
 
+  // 聊天内搜索
+  const csBtn = $('#chatSearchBtn');
+  if (csBtn) csBtn.addEventListener('click', () => toggleChatSearch());
+  const csInput = $('#chatSearchInput');
+  if (csInput) {
+    csInput.addEventListener('input', () => applyChatSearch(csInput.value.trim()));
+    csInput.addEventListener('keydown', (e) => { if (e.key === 'Escape') toggleChatSearch(false); });
+  }
+  const csClose = $('#chatSearchClose');
+  if (csClose) csClose.addEventListener('click', () => toggleChatSearch(false));
+
   // 输入区（富文本编辑区：表情以图片内嵌）
   const input = $('#input');
   input.addEventListener('input', autosizeInput);
@@ -1386,11 +1682,31 @@ function doSend() {
   const text = inputText();
   if (!text.trim()) return;
   setInputText('');
-  sendMessage('text', text);
+  const reply = state.replyTo;
+  state.replyTo = null;
+  renderReplyBar();
+  sendMessage('text', text, reply);
   const host = $('#input');
   if (host) host.focus();
 }
 
+/* ==================== 设置（独立窗口） ==================== */
+
+// 在独立窗口中打开设置（桌面端由外壳创建原生窗口，网页端为浏览器弹窗）
+function openSettingsWindow() {
+  if (state.isElectron) {
+    desktopCall('openSettings');
+    return;
+  }
+  const w = Math.min(980, Math.round(window.screen.availWidth * 0.7));
+  const h = Math.min(700, Math.round(window.screen.availHeight * 0.8));
+  const left = Math.round((window.screen.availWidth - w) / 2);
+  const top = Math.round((window.screen.availHeight - h) / 2);
+  const win = window.open('./settings.html', 'wmessage-settings',
+    'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top + ',resizable=yes,scrollbars=no');
+  if (win) win.focus();
+  else toast('设置窗口被浏览器拦截，请允许弹出窗口', 'error');
+}
 /* ==================== 设置（Telegram 式：左侧分区 + 右侧内容） ==================== */
 
 const SET_SECTIONS = [
@@ -1602,4 +1918,7 @@ async function logout(reason = '') {
 
 /* ==================== 启动 ==================== */
 boot();
+
+
+
 
