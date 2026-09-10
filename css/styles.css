@@ -4,6 +4,9 @@
 */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* hidden 属性必须始终生效：组件类的 display 声明不得覆盖它 */
+[hidden] { display: none !important; }
+
 html, body { height: 100%; }
 
 body {
