@@ -127,19 +127,18 @@ function appTemplate() {
     <div class="t-bubbles"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
     <aside class="sidebar" id="sidebar">
       <div class="side-head">
-        <div class="brand"><img src="./logo.svg" alt=""><span>WMessage</span></div>
-        <div class="side-actions">
-          <button class="icon-btn" id="notifyBtn" title="桌面通知"><svg class="ic"><use href="#i-bell"></use></svg></button>
+        <button class="icon-btn" id="notifyBtn" title="桌面通知"><svg class="ic"><use href="#i-bell"></use></svg></button>
+        <div class="search-box">
+          <svg class="ic search-ic"><use href="#i-search"></use></svg>
+          <input id="searchInput" placeholder="搜索" autocomplete="off">
+          <div class="search-pop" id="searchPop" hidden></div>
         </div>
       </div>
-      <div class="search-box">
-        <input id="searchInput" placeholder="搜索用户，发起私聊…" autocomplete="off">
-        <div class="search-pop" id="searchPop" hidden></div>
-      </div>
       <div class="room-list" id="roomList"></div>
-      <div class="side-actions-row">
-        <button class="btn btn-ghost" id="newChannelBtn">＋ 新建频道</button>
-        <button class="btn btn-ghost" id="discoverBtn"><svg class="ic ic-sm"><use href="#i-compass"></use></svg> 发现</button>
+      <button class="fab" id="fabBtn" type="button" title="新建"><svg class="ic"><use href="#i-edit"></use></svg></button>
+      <div class="fab-pop" id="fabPop" hidden>
+        <button class="btn-ghost" id="newChannelBtn"><svg class="ic ic-sm"><use href="#i-chat"></use></svg> 新建频道</button>
+        <button class="btn-ghost" id="discoverBtn"><svg class="ic ic-sm"><use href="#i-compass"></use></svg> 发现频道</button>
       </div>
       <div class="side-user" id="userChip" title="点击退出登录"></div>
     </aside>
@@ -148,13 +147,14 @@ function appTemplate() {
     <main class="main">
       <header class="main-header">
         <button class="icon-btn back" id="backBtn"><svg class="ic"><use href="#i-menu"></use></svg></button>
+        <div class="head-avatar" id="headAvatar" hidden></div>
         <div class="room-title-wrap">
           <div class="room-title" id="roomTitle">WMessage</div>
           <div class="room-sub" id="roomSub">选择一个会话开始聊天</div>
         </div>
         <div class="header-actions">
-          <button class="icon-btn" id="membersBtn" title="成员列表"><svg class="ic"><use href="#i-members"></use></svg></button>
-          <button class="icon-btn" id="moreBtn" title="更多"><svg class="ic"><use href="#i-more"></use></svg></button>
+          <button class="icon-btn" id="membersBtn" title="成员列表" hidden><svg class="ic"><use href="#i-members"></use></svg></button>
+          <button class="icon-btn" id="moreBtn" title="更多" hidden><svg class="ic"><use href="#i-more"></use></svg></button>
           <div class="more-pop" id="morePop" hidden></div>
         </div>
       </header>
@@ -164,9 +164,11 @@ function appTemplate() {
       </div>
       <div class="typing" id="typing"></div>
       <footer class="composer">
-        <textarea id="input" rows="1" placeholder="输入消息，Enter 发送，Shift+Enter 换行"></textarea>
-        <button class="icon-btn" id="emojiBtn" title="表情" type="button"><svg class="ic"><use href="#i-smile"></use></svg></button>
-        <button class="icon-btn" id="attachBtn" title="发送图片" type="button" hidden><svg class="ic"><use href="#i-image"></use></svg></button>
+        <div class="input-wrap">
+          <button class="icon-btn" id="attachBtn" title="发送图片" type="button" hidden><svg class="ic"><use href="#i-image"></use></svg></button>
+          <textarea id="input" rows="1" placeholder="写消息…"></textarea>
+          <button class="icon-btn" id="emojiBtn" title="表情" type="button"><svg class="ic"><use href="#i-smile"></use></svg></button>
+        </div>
         <button class="btn btn-primary send-mini" id="sendBtn" type="button"><svg class="ic send-ic"><use href="#i-send"></use></svg><span class="send-label">发送</span></button>
         <input type="file" id="fileInput" accept="image/*" hidden>
       </footer>
@@ -320,7 +322,7 @@ function renderRooms() {
   if (!list) return;
   list.innerHTML = '';
   if (!state.rooms.length) {
-    list.append(el('div', { class: 'empty-list' }, '还没有会话，', el('br'), '下方「新建频道」或「发现」加入频道，', el('br'), '也可以搜索用户发起私聊。'));
+    list.append(el('div', { class: 'empty-list' }, '还没有会话', el('br'), '点右下角按钮新建或发现频道', el('br'), '也可以搜索用户发起私聊'));
     return;
   }
   const sort = (a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0) || (b.joinedAt || 0) - (a.joinedAt || 0);
@@ -468,7 +470,24 @@ function renderHeader() {
     sub.textContent = `${state.members.length} 名成员`;
   }
   const more = $('#moreBtn');
-  if (more) more.style.visibility = room.type === 'channel' ? 'visible' : 'hidden';
+  if (more) {
+    more.hidden = room.type !== 'channel';
+    more.style.visibility = 'visible';
+  }
+  const mem = $('#membersBtn');
+  if (mem) mem.hidden = false;
+
+  // 头部头像（Telegram 风格：会话头像常驻标题左侧）
+  const slot = $('#headAvatar');
+  if (slot) {
+    const label = room.type === 'dm' && room.partner ? room.partner.nickname : roomDisplayName(room);
+    const color = room.type === 'dm' && room.partner && room.partner.avatarColor
+      ? room.partner.avatarColor
+      : (room.type === 'dm' ? '#4f7cff' : '#5288c1');
+    slot.hidden = false;
+    slot.textContent = String(label || '?').trim().charAt(0).toUpperCase() || '?';
+    slot.style.background = color;
+  }
 }
 
 function renderMembers() {
@@ -520,19 +539,20 @@ function buildMessageNode(msg, prevMsg) {
     class: 'msg' + (own ? ' own' : '') + (grouped ? ' grouped' : '') + (msg.pending ? ' pending' : ''),
     dataset: { mid: msg.id, cid: msg.clientId || '' },
   });
-  if (!grouped) wrap.append(avatarEl(msg.nickname, msg.avatarColor, 36));
+  if (!grouped && !own) wrap.append(avatarEl(msg.nickname, msg.avatarColor, 36));
   const body = el('div', { class: 'msg-body' });
-  if (!grouped) {
-    body.append(el('div', { class: 'msg-meta' },
-      el('span', { class: 'name' }, own ? '我' : (msg.nickname || '')),
-      el('span', { class: 'time' }, formatTime(msg.createdAt))));
-  }
   if (msg.type === 'image') {
     const img = el('img', { class: 'msg-img', src: imgSrc(msg.content), alt: '图片', loading: 'lazy' });
     img.addEventListener('click', () => lightbox(imgSrc(msg.content)));
-    body.append(img);
+    body.append(el('div', { class: 'bubble media' }, img, el('span', { class: 'bubble-time' }, formatTime(msg.createdAt))));
   } else {
-    body.append(el('div', { class: 'bubble' }, msg.content));
+    const bubble = el('div', { class: 'bubble' });
+    if (!own && state.activeRoom && state.activeRoom.type === 'channel' && !grouped) {
+      bubble.append(el('div', { class: 'bubble-name' }, msg.nickname || ''));
+    }
+    bubble.append(el('div', { class: 'bubble-text' }, msg.content));
+    bubble.append(el('span', { class: 'bubble-time' }, formatTime(msg.createdAt)));
+    body.append(bubble);
   }
   wrap.append(body);
   return wrap;
@@ -1104,9 +1124,22 @@ function bindAppEvents() {
   // 侧边栏
   $('#notifyBtn').addEventListener('click', toggleNotify);
   $('#userChip').addEventListener('click', () => logout());
-  $('#newChannelBtn').addEventListener('click', openNewChannelModal);
-  $('#discoverBtn').addEventListener('click', openDiscoverModal);
+  $('#newChannelBtn').addEventListener('click', () => { $('#fabPop').hidden = true; openNewChannelModal(); });
+  $('#discoverBtn').addEventListener('click', () => { $('#fabPop').hidden = true; openDiscoverModal(); });
   bindSearch('#searchInput', '#searchPop');
+
+  // 悬浮"新建"按钮（Telegram 右下角铅笔）
+  const fab = $('#fabBtn');
+  const fabPop = $('#fabPop');
+  if (fab && fabPop) {
+    fab.addEventListener('click', (e) => {
+      e.stopPropagation();
+      fabPop.hidden = !fabPop.hidden;
+    });
+    document.addEventListener('click', (e) => {
+      if (!fabPop.hidden && !fabPop.contains(e.target)) fabPop.hidden = true;
+    });
+  }
 
   // 移动端：悬浮底栏 + 联系人/设置视图
   const floatNav = $('#floatNav');
