@@ -1,5 +1,9 @@
 // WMessage 设置窗口（独立页面：由主界面"设置"打开）
-import { getToken, getUser, setUser, clearAuth, getNotify, setNotify } from './store.js';
+import {
+  getToken, getUser, setUser, clearAuth, getNotify, setNotify,
+  getSound, setSound, getFolders, setFolders, getEnterSend, setEnterSend, getAnim, setAnim,
+  localCacheSize, clearLocalCache,
+} from './store.js';
 import * as api from './supabase.js';
 import { $, el, icon, toast, modal, confirmDialog, avatarEl } from './ui.js';
 import { EMOJIS, emojiSrc, splitEmoji } from './emoji.js';
@@ -31,13 +35,16 @@ function richText(text) {
   return frag;
 }
 
-/* ==================== 分区 ==================== */
+/* ==================== 分区（与 Telegram Desktop 一致） ==================== */
 const SECTIONS = [
   { id: 'profile', icon: 'i-members', label: '编辑资料' },
   { id: 'notify', icon: 'i-bell', label: '通知和声音' },
-  { id: 'security', icon: 'i-info', label: '隐私与安全' },
-  { id: 'data', icon: 'i-info', label: '数据与存储' },
-  { id: 'about', icon: 'i-info', label: '关于' },
+  { id: 'privacy', icon: 'i-lock', label: '隐私和安全' },
+  { id: 'data', icon: 'i-info', label: '数据和存储' },
+  { id: 'folders', icon: 'i-chat', label: '聊天文件夹' },
+  { id: 'devices', icon: 'i-device', label: '设备' },
+  { id: 'language', icon: 'i-lang', label: '语言' },
+  { id: 'advanced', icon: 'i-gear', label: '高级' },
 ];
 
 function render() {
@@ -70,9 +77,43 @@ function render() {
   pane.innerHTML = '';
   if (state.section === 'profile') renderProfile(pane);
   else if (state.section === 'notify') renderNotify(pane);
-  else if (state.section === 'security') renderSecurity(pane);
+  else if (state.section === 'privacy') renderPrivacy(pane);
   else if (state.section === 'data') renderData(pane);
-  else renderAbout(pane);
+  else if (state.section === 'folders') renderFolders(pane);
+  else if (state.section === 'devices') renderDevices(pane);
+  else if (state.section === 'language') renderLanguage(pane);
+  else renderAdvanced(pane);
+}
+
+// 自绘开关行
+function switchRow(title, sub, on, onToggle) {
+  return el('div', { class: 'set-row' },
+    el('div', { class: 'set-row-main' },
+      el('div', { class: 'set-row-title' }, title),
+      sub ? el('div', { class: 'set-row-sub' }, sub) : null),
+    el('button', {
+      type: 'button',
+      class: 'switch' + (on ? ' on' : ''),
+      title: on ? '点击关闭' : '点击开启',
+      onClick: () => { onToggle(); render(); },
+    }, el('span', { class: 'knob' })));
+}
+
+function infoRow(title, sub) {
+  return el('div', { class: 'set-row' },
+    el('div', { class: 'set-row-main' },
+      el('div', { class: 'set-row-title' }, title),
+      sub ? el('div', { class: 'set-row-sub' }, sub) : null));
+}
+
+function actionRow(title, sub, onClick) {
+  const row = el('div', { class: 'set-row set-row-btn' },
+    el('div', { class: 'set-row-main' },
+      el('div', { class: 'set-row-title' }, title),
+      sub ? el('div', { class: 'set-row-sub' }, sub) : null),
+    el('span', { class: 'set-row-arrow' }, '›'));
+  row.addEventListener('click', onClick);
+  return row;
 }
 
 function field(label, value, opts = {}) {
@@ -130,29 +171,21 @@ function renderProfile(pane) {
 
 function renderNotify(pane) {
   const on = getNotify(state.isElectron);
-  const row = el('div', { class: 'set-row' },
-    el('div', { class: 'set-row-main' },
-      el('div', { class: 'set-row-title' }, '消息通知'),
-      el('div', { class: 'set-row-sub' }, state.isElectron
-        ? '通过 Windows 系统通知提醒新消息，点击通知可直达会话'
-        : '通过浏览器通知提醒新消息')),
-    el('button', {
-      type: 'button',
-      class: 'switch' + (on ? ' on' : ''),
-      title: on ? '点击静音' : '点击开启',
-      onClick: () => { setNotify(!on); render(); toast(!on ? '已开启通知' : '已静音通知'); },
-    }, el('span', { class: 'knob' })));
-  pane.append(el('div', { class: 'set-group' }, row,
-    el('div', { class: 'set-row' },
-      el('div', { class: 'set-row-main' },
-        el('div', { class: 'set-row-title' }, '单个会话静音'),
-        el('div', { class: 'set-row-sub' }, '在会话列表右键即可单独静音某个会话')))));
+  const sound = getSound();
+  pane.append(el('div', { class: 'set-group' },
+    el('div', { class: 'set-group-title' }, '消息通知'),
+    switchRow('通知', state.isElectron ? '通过 Windows 系统通知提醒新消息，点击通知可直达会话' : '通过浏览器通知提醒新消息', on,
+      () => { setNotify(!on); toast(!on ? '已开启通知' : '已静音通知'); }),
+    switchRow('提示音', '收到新消息时播放提示音', sound,
+      () => { setSound(!sound); toast(!sound ? '已开启提示音' : '已关闭提示音'); }),
+    el('div', { class: 'set-group-title' }, '按会话设置'),
+    infoRow('单个会话静音', '在会话列表右键选择「静音通知」，该会话将不再提醒')));
   if (!state.isElectron) {
     pane.append(el('div', { class: 'set-note' }, '浏览器通知需要授权。若系统已禁止通知，请在浏览器设置中允许本站通知。'));
   }
 }
 
-function renderSecurity(pane) {
+function renderPrivacy(pane) {
   const cur = field('当前密码', '', { type: 'password', placeholder: '输入当前密码' });
   const nxt = field('新密码', '', { type: 'password', placeholder: '至少 6 位' });
   pane.append(el('div', { class: 'set-group' },
@@ -175,39 +208,84 @@ function renderSecurity(pane) {
   });
   pane.append(btn);
   pane.append(el('div', { class: 'set-note' }, '修改密码后，其他设备上的登录状态可能失效，需要重新登录。'));
+
+  pane.append(el('div', { class: 'set-group' },
+    el('div', { class: 'set-group-title' }, '登录'),
+    actionRow('清除本机登录记录', '清除本机保存的登录状态与上次登录账号', async () => {
+      const ok = await confirmDialog({ title: '清除登录记录', text: '将退出登录并清除本机保存的账号信息，确定继续吗？', okLabel: '清除', cancelLabel: '取消' });
+      if (!ok) return;
+      try { localStorage.removeItem('wmessage_last_account'); } catch { /* 忽略 */ }
+      clearAuth();
+      toast('已清除登录记录');
+      setTimeout(() => { location.href = './login.html'; }, 600);
+    })));
 }
 
 function renderData(pane) {
-  const clear = el('div', { class: 'set-row set-row-btn' },
+  const kb = localCacheSize();
+  const usage = el('div', { class: 'set-row' },
     el('div', { class: 'set-row-main' },
-      el('div', { class: 'set-row-title' }, '清除本地登录记录'),
-      el('div', { class: 'set-row-sub' }, '清除本机保存的登录状态与上次登录账号')),
-    el('span', { class: 'set-row-arrow' }, '›'));
-  clear.addEventListener('click', async () => {
-    const ok = await confirmDialog({ title: '清除登录记录', text: '将退出登录并清除本机保存的账号信息，确定继续吗？', okLabel: '清除', cancelLabel: '取消' });
-    if (!ok) return;
-    try { localStorage.removeItem('wmessage_last_account'); } catch { /* 忽略 */ }
-    clearAuth();
-    toast('已清除登录记录');
-    setTimeout(() => { location.href = './login.html'; }, 600);
-  });
-  pane.append(el('div', { class: 'set-group' }, clear,
-    el('div', { class: 'set-row' },
-      el('div', { class: 'set-row-main' },
-        el('div', { class: 'set-row-title' }, '消息记录'),
-        el('div', { class: 'set-row-sub' }, '聊天记录保存在账号中，换设备登录后自动同步')))));
+      el('div', { class: 'set-row-title' }, '本地缓存'),
+      el('div', { class: 'set-row-sub' }, '当前占用约 ' + kb + ' KB')));
+  pane.append(el('div', { class: 'set-group' },
+    el('div', { class: 'set-group-title' }, '存储'),
+    usage,
+    actionRow('清理本地缓存', '清除未读标记等本地数据，保留登录状态与设置', () => {
+      clearLocalCache();
+      toast('已清理本地缓存');
+      render();
+    }),
+    infoRow('消息记录', '聊天记录保存在账号中，换设备登录后自动同步'),
+    infoRow('图片消息', '图片以原图保存在云端，任何设备都能查看')));
 }
 
-function renderAbout(pane) {
+function renderFolders(pane) {
+  const on = getFolders();
   pane.append(el('div', { class: 'set-group' },
-    el('div', { class: 'set-row' },
-      el('div', { class: 'set-row-main' },
-        el('div', { class: 'set-row-title' }, 'WMessage'),
-        el('div', { class: 'set-row-sub' }, '轻快 · 私密 · 安全'))),
-    el('div', { class: 'set-row' },
-      el('div', { class: 'set-row-main' },
-        el('div', { class: 'set-row-title' }, '版本'),
-        el('div', { class: 'set-row-sub' }, '1.0.0')))));
+    el('div', { class: 'set-group-title' }, '会话列表'),
+    switchRow('显示文件夹分页', '在会话列表上方显示「全部 / 未读 / 已置顶」分页', on,
+      () => { setFolders(!on); toast(!on ? '已显示文件夹分页' : '已隐藏文件夹分页'); }),
+    el('div', { class: 'set-group-title' }, '内置文件夹'),
+    infoRow('全部', '显示所有会话，置顶会话排在最前'),
+    infoRow('未读', '只显示有未读消息的会话'),
+    infoRow('已置顶', '只显示在会话列表右键置顶的会话')));
+}
+
+function renderDevices(pane) {
+  const ua = navigator.userAgent || '';
+  const isDesktop = state.isElectron;
+  const sys = /Windows NT 10/.test(ua) ? 'Windows 10/11'
+    : /Windows/.test(ua) ? 'Windows'
+    : /Mac OS X/.test(ua) ? 'macOS'
+    : /Android/.test(ua) ? 'Android'
+    : /iPhone|iPad/.test(ua) ? 'iOS'
+    : /Linux/.test(ua) ? 'Linux' : '未知系统';
+  const runtime = isDesktop ? '桌面客户端' : (/Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : '浏览器');
+  pane.append(el('div', { class: 'set-group' },
+    el('div', { class: 'set-group-title' }, '当前设备'),
+    infoRow('系统', sys),
+    infoRow('客户端', runtime),
+    infoRow('账号', (state.user && state.user.email) || '')),
+    el('div', { class: 'set-note' }, '本机登录状态可随时通过「隐私和安全 → 清除本机登录记录」退出。'));
+}
+
+function renderLanguage(pane) {
+  pane.append(el('div', { class: 'set-group' },
+    el('div', { class: 'set-group-title' }, '界面语言'),
+    infoRow('简体中文', '当前使用的语言')));
+  pane.append(el('div', { class: 'set-note' }, '更多语言将在后续版本提供。'));
+}
+
+function renderAdvanced(pane) {
+  const enter = getEnterSend();
+  const anim = getAnim();
+  pane.append(el('div', { class: 'set-group' },
+    el('div', { class: 'set-group-title' }, '输入'),
+    switchRow('Enter 键发送消息', enter ? '按 Enter 发送，Shift+Enter 换行' : '按 Ctrl+Enter 发送，Enter 换行', enter,
+      () => { setEnterSend(!enter); toast(!enter ? 'Enter 键发送已开启' : 'Enter 键换行已开启'); }),
+    el('div', { class: 'set-group-title' }, '界面'),
+    switchRow('动画效果', '窗口与界面切换时使用平滑动画', anim,
+      () => { setAnim(!anim); toast(!anim ? '已开启动画效果' : '已关闭动画效果'); })));
 }
 
 /* ==================== 事件 ==================== */
