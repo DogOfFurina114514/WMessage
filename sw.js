@@ -1,5 +1,5 @@
 // WMessage Service Worker —— PWA 离线缓存
-const CACHE = 'wmessage-v6'; // 升级版本号：清空旧缓存，强制所有客户端拉到最新前端
+const CACHE = 'wmessage-v7'; // 升级版本号：清空旧缓存，强制所有客户端拉到最新前端
 const SHELL = [
   './',
   './index.html',
@@ -55,17 +55,16 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // 静态资源：缓存优先 + 后台更新
+  // 静态资源：网络优先（保证每次部署都能拿到最新前端），离线回退缓存
   e.respondWith(
-    caches.match(req).then((hit) => {
-      if (hit) return hit;
-      return fetch(req).then((res) => {
+    fetch(req)
+      .then((res) => {
         if (res.ok && new URL(req.url).pathname.startsWith(self.location.pathname)) {
           const copy = res.clone();
           caches.open(CACHE).then((c) => c.put(req, copy));
         }
         return res;
-      });
-    })
+      })
+      .catch(() => caches.match(req).then((hit) => hit || Response.error()))
   );
 });
