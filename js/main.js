@@ -223,14 +223,19 @@ function setListOnly(on) {
   const list = !!on && state.isElectron;
   document.body.classList.toggle('list-only', list);
   if (!state.isElectron) return;
-  const side = $('#sidebar');
-  const w = side ? Math.ceil(side.getBoundingClientRect().width) : 0;
-  desktopCall('layout', { mode: list ? 'list' : 'chat', w });
   setDesktopTitle('WMessage');
+  // 等样式生效后再量宽度（否则会量到布局动画中被挤压的值）
+  const send = () => {
+    const side = $('#sidebar');
+    const w = side ? Math.round(side.getBoundingClientRect().width) : 360;
+    desktopCall('layout', { mode: list ? 'list' : 'chat', w });
+  };
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(send));
+  else setTimeout(send, 32);
 }
 
 function enterApp() {
-  // 桌面客户端：登录成功后展开为全尺寸聊天窗口
+  // 桌面客户端：登录成功后切成系统窗口（尺寸由 setListOnly 统一驱动）
   setDesktopTitle('WMessage');
   desktopCall('expand');
   $app.innerHTML = appTemplate();
