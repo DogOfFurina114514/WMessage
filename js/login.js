@@ -288,6 +288,17 @@ function bindAuth() {
 }
 
 /* ==================== 启动 ==================== */
+// 前端有更新时（新 Service Worker 接管）自动刷新一次，避免停留在旧版本
+(function autoUpdate() {
+  if (!('serviceWorker' in navigator)) return;
+  let done = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (done) return;
+    done = true;
+    location.reload();
+  });
+})();
+
 // 兜底：任何未捕获异常都要在界面上可见，避免"点了没反应"
 function surfaceError(text) {
   const box = document.getElementById('authError');
@@ -302,8 +313,7 @@ window.addEventListener('unhandledrejection', (e) => {
 
 detectPlatform();
 // 桌面壳：登录阶段使用无边框小窗（自定义关闭按钮 + 卡片贴合尺寸）
-desktopCall('mode', { mode: 'auth' });
-// 预填上次登录账号，减少输入
+desktopCall('mode', { mode: 'auth' });// 预填上次登录账号，减少输入
 (function prefill() {
   const last = getLastAccount();
   const input = $('#authEmail');
