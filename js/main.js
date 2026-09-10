@@ -2,6 +2,7 @@
 import {
   getApiBase, getToken, setToken, getUser, setUser, clearAuth,
   getUnread, bumpUnread, resetUnread, getNotify, setNotify,
+  getSound, getFolders, getEnterSend, getAnim,
 } from './store.js';
 import * as api from './supabase.js';
 import { EMOJIS, emojiSrc, splitEmoji } from './emoji.js';
@@ -268,6 +269,8 @@ function enterApp() {
     setMobileView('chats');
     renderMobilePanel();
   }
+  // 界面动画偏好
+  if (state.isElectron) document.body.classList.toggle('no-anim', !getAnim());
   // 图片存储始终可用
   state.uploadEnabled = true;
   const attach = $('#attachBtn');
@@ -402,6 +405,11 @@ function renderRooms() {
 function renderFolderTabs() {
   const host = $('#sidebar');
   if (!host) return;
+  if (!getFolders()) {
+    const ex = document.getElementById('folderTabs');
+    if (ex) ex.remove();
+    return;
+  }
   let bar = document.getElementById('folderTabs');
   if (!bar) {
     bar = el('div', { class: 'folders', id: 'folderTabs' });
@@ -461,12 +469,12 @@ function roomItem(r) {
 /* ==================== 会话右键菜单（置顶 / 静音 / 清空） ==================== */
 
 function openRoomMenu(room, x, y) {
-  closeRoomMenu();
-  const menu = el('div', { class: 'ctx-menu', id: 'roomCtxMenu' });
+  closeCtxMenu();
+  const menu = el('div', { class: 'ctx-menu', id: 'ctxMenu' });
   const add = (label, iconId, fn, danger) => {
     const b = el('button', { type: 'button', class: danger ? 'danger' : '' }, icon(iconId), ' ' + label);
     b.addEventListener('click', async () => {
-      closeRoomMenu();
+      closeCtxMenu();
       await fn();
     });
     menu.append(b);
@@ -477,13 +485,13 @@ function openRoomMenu(room, x, y) {
     toast(room.pinned ? '已置顶' : '已取消置顶');
     renderRooms();
   });
-  add(room.muted ? '取消静音' : '静音通知', 'i-bell-off', async () => {
+  add(room.muted ? '取消静音' : '静音通知', room.muted ? 'i-bell' : 'i-bell-off', async () => {
     await api.setMemberFlag(room.id, { muted: !room.muted });
     room.muted = !room.muted;
     toast(room.muted ? '已静音' : '已取消静音');
     renderRooms();
   });
-  add('清空聊天记录', 'i-close', async () => {
+  add('清空聊天记录', 'i-trash', async () => {
     const ok = await confirmDialog({
       title: '清空聊天记录',
       text: '将清空「' + roomDisplayName(room) + '」的聊天记录（仅对你隐藏，其他成员不受影响）。',
@@ -503,18 +511,7 @@ function openRoomMenu(room, x, y) {
     toast('已清空聊天记录');
   });
   document.body.append(menu);
-  const rect = menu.getBoundingClientRect();
-  menu.style.left = Math.min(x, window.innerWidth - rect.width - 8) + 'px';
-  menu.style.top = Math.min(y, window.innerHeight - rect.height - 8) + 'px';
-  setTimeout(() => {
-    const off = (ev) => { if (!menu.contains(ev.target)) { closeRoomMenu(); document.removeEventListener('mousedown', off); } };
-    document.addEventListener('mousedown', off);
-  }, 0);
-}
-
-function closeRoomMenu() {
-  const m = document.getElementById('roomCtxMenu');
-  if (m) m.remove();
+  placeMenu(menu, x, y);
 }
 
 /* ==================== 打开会话 ==================== */
@@ -737,27 +734,49 @@ function buildMessageNode(msg, prevMsg) {
     body.append(bubble);
   }
   wrap.append(body);
-  wrap.append(messageActions(msg, own));
+  wrap.addEventListener('contextmenu', (e) => {
+    if (e.target.closest('.msg-img')) return;   // 图片右键留给浏览器/图片查看
+    e.preventDefault();
+    openMessageMenu(msg, own, e.clientX, e.clientY);
+  });
   return wrap;
 }
 
-// 悬停操作条：回复 / 转发 / 复制 / 删除（Telegram 式）
-function messageActions(msg, own) {
-  const bar = el('div', { class: 'msg-actions' });
-  const mk = (iconId, title, fn, danger) => {
-    const b = el('button', { type: 'button', class: 'ma-btn' + (danger ? ' danger' : ''), title },
-      icon(iconId));
-    b.addEventListener('click', (e) => { e.stopPropagation(); fn(); });
-    return b;
+// 消息右键菜单：回复 / 转发 / 复制 / 删除（Telegram 式）
+function openMessageMenu(msg, own, x, y) {
+  closeCtxMenu();
+  const menu = el('div', { class: 'ctx-menu', id: 'ctxMenu' });
+  const add = (label, iconId, fn, danger) => {
+    const b = el('button', { type: 'button', class: danger ? 'danger' : '' }, icon(iconId), ' ' + label);
+    b.addEventListener('click', () => { closeCtxMenu(); fn(); });
+    menu.append(b);
   };
-  bar.append(mk('i-back', '回复', () => startReply(msg)));
-  bar.append(mk('i-send', '转发', () => openForwardModal(msg)));
-  bar.append(mk('i-more', '复制', () => {
-    const text = msg.type === 'image' ? msg.content : msg.content;
-    navigator.clipboard?.writeText(text).then(() => toast('已复制'), () => toast('复制失败', 'error'));
-  }));
-  if (own) bar.append(mk('i-close', '删除', () => confirmDeleteMessage(msg), true));
-  return bar;
+  add('回复', 'i-reply', () => startReply(msg));
+  add('转发', 'i-forward', () => openForwardModal(msg));
+  add('复制文本', 'i-copy', () => {
+    navigator.clipboard?.writeText(msg.content || '')
+      .then(() => toast('已复制'), () => toast('复制失败', 'error'));
+  });
+  if (own) add('删除消息', 'i-trash', () => confirmDeleteMessage(msg), true);
+  document.body.append(menu);
+  placeMenu(menu, x, y);
+}
+
+function placeMenu(menu, x, y) {
+  const rect = menu.getBoundingClientRect();
+  menu.style.left = Math.max(8, Math.min(x, window.innerWidth - rect.width - 8)) + 'px';
+  menu.style.top = Math.max(8, Math.min(y, window.innerHeight - rect.height - 8)) + 'px';
+  setTimeout(() => {
+    const off = (ev) => {
+      if (!menu.contains(ev.target)) { closeCtxMenu(); document.removeEventListener('mousedown', off); }
+    };
+    document.addEventListener('mousedown', off);
+  }, 0);
+}
+
+function closeCtxMenu() {
+  const m = document.getElementById('ctxMenu');
+  if (m) m.remove();
 }
 
 function startReply(msg) {
@@ -1436,6 +1455,7 @@ function notify(msg) {
   if (document.visibilityState === 'visible' && state.activeRoom && state.activeRoom.id === msg.roomId) return;
   const title = msg.nickname || '新消息';
   const body = msg.type === 'image' ? '[图片]' : (msg.content || '').slice(0, 120);
+  if (getSound()) playPing();
   // 桌面端：交给外壳发 Windows 通知（点击通知可直接打开该会话）
   if (state.isElectron) {
     desktopCall('notify', { title, body, roomId: msg.roomId });
@@ -1459,6 +1479,28 @@ function notify(msg) {
   }
 }
 
+// 新消息提示音（Web Audio 合成，无需音频文件）
+let _audioCtx = null;
+function playPing() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!_audioCtx) _audioCtx = new AC();
+    const ctx = _audioCtx;
+    if (ctx.state === 'suspended') ctx.resume();
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, now);
+    osc.frequency.exponentialRampToValueAtTime(1320, now + 0.08);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.14, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(now); osc.stop(now + 0.34);
+  } catch { /* 静默失败 */ }
+}
 // 未读总数同步到系统托盘提示
 function pushUnreadToShell() {
   if (!state.isElectron) return;
@@ -1610,9 +1652,17 @@ function bindAppEvents() {
   const input = $('#input');
   input.addEventListener('input', autosizeInput);
   input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    // Enter 发送 / Ctrl+Enter 发送，可在设置-高级中切换
+    const withMod = e.ctrlKey || e.metaKey;
+    const wantSend = getEnterSend() ? (e.key === 'Enter' && !e.shiftKey) : (e.key === 'Enter' && withMod);
+    if (wantSend) {
       e.preventDefault();
       doSend();
+      return;
+    }
+    if (!getEnterSend() && e.key === 'Enter' && !withMod) {
+      e.preventDefault();
+      document.execCommand('insertLineBreak');
     }
   });
   input.addEventListener('paste', (e) => {
@@ -1709,6 +1759,8 @@ async function logout(reason = '') {
 
 /* ==================== 启动 ==================== */
 boot();
+
+
 
 
 
