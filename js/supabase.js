@@ -84,7 +84,13 @@ const EMAIL_REDIRECT = 'https://dogoffurina114514.github.io/WMessage/auth.html';
 
 // 重发验证邮件（signup 类型）
 export async function resendVerification(email) {
-  const { error } = await sb.auth.resend({ type: 'signup', email, options: { redirectTo: EMAIL_REDIRECT } });
+  // 不同版本的客户端读取的字段名不同（emailRedirectTo / redirectTo），两个都带上，
+  // 否则回跳地址会被忽略、验证后跳到站点根目录
+  const { error } = await sb.auth.resend({
+    type: 'signup',
+    email,
+    options: { emailRedirectTo: EMAIL_REDIRECT, redirectTo: EMAIL_REDIRECT },
+  });
   if (error) {
     if (/rate limit/i.test(error.message)) throw new Error('发送太频繁，请稍后再试');
     throw new Error(error.message || '重发失败');
