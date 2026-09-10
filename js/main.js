@@ -89,8 +89,21 @@ async function boot() {
       enterApp();
       return;
     } catch (e) {
-      if (e.status === 401) clearAuth();
-      else toast(e.message, 'error');
+      if (e.status === 401) {
+        // 会话确实失效：清除本地凭证并回登录页
+        clearAuth();
+        location.replace('./login.html');
+        return;
+      }
+      // 其他失败（网络/界面异常）不回跳登录页，否则用户会看到"登录成功却又回到登录页"
+      toast('加载失败：' + (e.message || e), 'error');
+      $app.innerHTML = '<div class="auth"><div class="auth-card" style="text-align:center">' +
+        '<h1 style="margin:0 0 10px;font-size:20px">加载失败</h1>' +
+        '<p style="color:var(--muted);font-size:13px;line-height:1.9">' + (e.message || e) + '</p>' +
+        '<button class="btn btn-primary" style="margin-top:16px" id="retryBtn">重新加载</button></div></div>';
+      const retry = $('#retryBtn');
+      if (retry) retry.addEventListener('click', () => location.reload());
+      return;
     }
   }
   // 未登录：跳转到独立登录页
