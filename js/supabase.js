@@ -22,6 +22,7 @@ function toUser(row) {
 }
 function toMsg(row) {
   const u = row.users || {};
+  const rep = row.reply || null;
   return {
     id: row.id,
     clientId: row.client_id || '',
@@ -33,8 +34,17 @@ function toMsg(row) {
     username: u.username || '',
     nickname: u.nickname || '',
     avatarColor: u.avatar_color || '#4f7cff',
+    replyTo: row.reply_to || '',
+    reply: rep ? {
+      id: rep.id,
+      type: rep.type,
+      content: rep.content,
+      nickname: (rep.users && rep.users.nickname) || '',
+    } : null,
   };
 }
+
+const MSG_SELECT = 'id,room_id,user_id,client_id,type,content,created_at,reply_to,users(nickname,avatar_color,username),reply:reply_to(id,type,content,users(nickname))';
 
 function authErr(error) {
   const m = (error || {}).message || '操作失败';
@@ -169,20 +179,21 @@ export async function getRooms() {
   const id = await currentUserId();
   const { data: mem, error } = await sb
     .from('members')
-    .select('joined_at, rooms(id,type,name,description,created_by,created_at)')
+    .select('joined_at, pinned, muted, cleared_at, rooms(id,type,name,description,created_by,created_at)')
     .eq('user_id', id);
   if (error) throw new Error(error.message);
   const rooms = [];
   for (const m of mem || []) {
     const r = m.rooms;
     if (!r) continue;
-    const latest = await sb
+    let latestQ = sb
       .from('messages')
       .select('id,type,content,created_at,users(nickname)')
       .eq('room_id', r.id)
       .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
+    if (m.cleared_at) latestQ = latestQ.gt('created_at', m.cleared_at);
+    const latest = await latestQ.maybeSingle();
     let partner = null;
     if (r.type === 'dm') {
       const pm = await sb.from('members').select('user_id').eq('room_id', r.id).neq('user_id', id).limit(1).maybeSingle();
@@ -202,6 +213,9 @@ export async function getRooms() {
       lastMessageAt: latest.data ? new Date(latest.data.created_at).getTime() : null,
       lastSender: latest.data && latest.data.users ? latest.data.users.nickname : null,
       partner,
+      pinned: !!m.pinned,
+      muted: !!m.muted,
+      clearedAt: m.cleared_at ? new Date(m.cleared_at).getTime() : 0,
     });
   }
   return { rooms };
@@ -246,17 +260,34 @@ export async function leaveRoom(roomId) {
   return {};
 }
 
-export async function getMessages(roomId, { beforeTs, beforeId, limit = 50 } = {}) {
+export async function getMessages(roomId, { beforeTs, beforeId, limit = 50, afterTs } = {}) {
   let q = sb
     .from('messages')
-    .select('id,room_id,user_id,client_id,type,content,created_at,users(nickname,avatar_color,username)')
+    .select(MSG_SELECT)
     .eq('room_id', roomId)
     .order('created_at', { ascending: false })
     .limit(limit);
   if (beforeTs) q = q.lt('created_at', new Date(beforeTs).toISOString());
+  if (afterTs) q = q.gt('created_at', new Date(afterTs).toISOString());
   const { data, error } = await q;
   if (error) throw new Error(error.message);
   return { messages: (data || []).reverse().map(toMsg) };
+}
+
+// 删除自己的消息
+export async function deleteMessage(id) {
+  const uid = await currentUserId();
+  const { error } = await sb.from('messages').delete().eq('id', id).eq('user_id', uid);
+  if (error) throw new Error(error.message || '删除失败');
+  return true;
+}
+
+// 会话偏好：置顶 / 静音 / 清空聊天记录（清空=只对自己隐藏此前消息）
+export async function setMemberFlag(roomId, patch) {
+  const uid = await currentUserId();
+  const { error } = await sb.from('members').update(patch).eq('room_id', roomId).eq('user_id', uid);
+  if (error) throw new Error(error.message || '操作失败');
+  return true;
 }
 
 export async function searchUsers(q) {
@@ -299,8 +330,9 @@ export async function sendMessage(msg) {
       client_id: msg.clientId,
       type: msg.type,
       content: msg.content,
+      reply_to: msg.replyTo || null,
     })
-    .select('id,room_id,user_id,client_id,type,content,created_at,users(nickname,avatar_color,username)')
+    .select(MSG_SELECT)
     .single();
   if (ins.error) throw new Error(ins.error.message);
   return toMsg(ins.data);
@@ -313,15 +345,29 @@ export function subscribeRoom(roomId, onMessage) {
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` }, async (payload) => {
       const row = payload.new;
       if (!row.user_id || !row.id) return;
+      let reply = null;
+      if (row.reply_to) {
+        const rq = await sb.from('messages').select('id,type,content,users(nickname)').eq('id', row.reply_to).maybeSingle();
+        if (rq.data) reply = { id: rq.data.id, type: rq.data.type, content: rq.data.content, nickname: (rq.data.users && rq.data.users.nickname) || '' };
+      }
       let msg;
       if (row.user_id === (getUser() || {}).id) {
-        msg = toMsg({ ...row, users: { nickname: (getUser() || {}).nickname, avatar_color: (getUser() || {}).avatarColor, username: (getUser() || {}).username } });
+        msg = toMsg({ ...row, reply, users: { nickname: (getUser() || {}).nickname, avatar_color: (getUser() || {}).avatarColor, username: (getUser() || {}).username } });
       } else {
         const u = await sb.from('users').select('nickname,avatar_color,username').eq('id', row.user_id).single();
-        msg = toMsg({ ...row, users: u.data || {} });
+        msg = toMsg({ ...row, reply, users: u.data || {} });
       }
       onMessage(msg);
     })
+    .subscribe();
+  return () => sb.removeChannel(channel);
+}
+
+// 订阅本人的成员偏好变化（多端同步置顶/静音）
+export function subscribeMembers(userId, onChange) {
+  const channel = sb
+    .channel('mem:' + userId)
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'members', filter: `user_id=eq.${userId}` }, (payload) => onChange(payload.new))
     .subscribe();
   return () => sb.removeChannel(channel);
 }
