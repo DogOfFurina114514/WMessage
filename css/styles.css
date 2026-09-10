@@ -74,6 +74,17 @@ input, textarea { font: inherit; color: var(--text); }
 .icon-btn.active { color: #ffd166; border-color: rgba(255, 209, 102, .4); }
 .icon-btn:disabled { opacity: .5; cursor: not-allowed; }
 
+/* 通知开关：开启=点亮铃铛（强调色），关闭=划线铃铛（灰暗） */
+.icon-btn.notify-on {
+  color: var(--accent-2, #64b5ef);
+  background: var(--notify-on-bg, rgba(82, 136, 193, .16));
+}
+.icon-btn.notify-on:hover { background: var(--notify-on-bg, rgba(82, 136, 193, .26)); }
+.icon-btn.notify-off { color: var(--muted-2); }
+.icon-btn.notify-off:hover { color: var(--muted); }
+.msetting-item .right.on { color: var(--accent-2, #64b5ef); font-weight: 600; }
+.msetting-item .right.off { color: var(--muted-2); }
+
 .link-btn {
   background: none; border: none; color: var(--accent);
   cursor: pointer; font-size: 12px; padding: 4px;
@@ -460,9 +471,21 @@ input, textarea { font: inherit; color: var(--text); }
   vertical-align: -0.22em;
   flex: none;
 }
+
+/* 内置表情图片（各端渲染一致，不依赖系统字体） */
+.emoji-img { width: 26px; height: 26px; display: block; pointer-events: none; }
+.emoji-inline {
+  width: 20px; height: 20px; display: inline-block; vertical-align: -0.25em;
+  margin: 0 1px; pointer-events: none;
+}
+.emoji-btn { padding: 4px; line-height: 0; }
+
+/* 桌面端"仅列表"模式：未选中会话时隐藏聊天区，窗口横向收缩 */
+html.theme-desktop body.list-only .main,
+html.theme-desktop body.list-only .members { display: none; }
+html.theme-desktop body.list-only .sidebar { border-right: none; }
 .big .ic { width: 44px; height: 44px; vertical-align: middle; }
 .empty .big { line-height: 1; }
-.send-mini .send-ic { display: none; }
 
 /* 桌面客户端：登录卡片右上角关闭按钮 */
 .win-close {
