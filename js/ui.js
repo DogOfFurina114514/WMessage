@@ -20,6 +20,17 @@ export function el(tag, attrs = {}, ...children) {
   return node;
 }
 
+// 生成 SVG 图标节点（HTML 字符串会被 el() 转义成文本，必须用真实节点）
+export function icon(name, cls = 'ic') {
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('class', cls);
+  const use = document.createElementNS(NS, 'use');
+  use.setAttribute('href', '#' + name);
+  svg.appendChild(use);
+  return svg;
+}
+
 export function toast(msg, type = 'info') {
   let host = document.getElementById('toasts');
   if (!host) {
