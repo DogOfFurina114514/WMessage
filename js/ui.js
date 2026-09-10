@@ -5,7 +5,8 @@ export function $(sel, root) {
 
 export function el(tag, attrs = {}, ...children) {
   const node = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs)) {
+  // 允许调用方用 null 表示"无属性"：默认参数只对 undefined 生效，这里显式兜底
+  for (const [k, v] of Object.entries(attrs || {})) {
     if (v == null || v === false) continue;
     if (k === 'class') node.className = v;
     else if (k === 'dataset') Object.assign(node.dataset, v);
