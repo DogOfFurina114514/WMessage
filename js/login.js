@@ -1,11 +1,18 @@
 // WMessage 登录页逻辑（独立于主界面 index.html）
-import { setToken, setUser, clearAuth, getUser } from './store.js';
+import { setToken, setUser, clearAuth, getUser, getLastAccount, setLastAccount, clearLastAccount } from './store.js';
 import * as api from './supabase.js';
 import { $, el, toast, modal } from './ui.js';
 
 const $app = $('#app');
 
 const state = { user: null, isElectron: false, isMobile: false };
+
+// 与数据层共用同一客户端配置（会话持久化），用于"一键登录"复用上次会话
+const sbAuth = window.supabase.createClient(
+  window.APP_CONFIG.supabaseUrl,
+  window.APP_CONFIG.supabaseKey,
+  { auth: { persistSession: true, autoRefreshToken: true } }
+);
 
 /* ==================== 平台检测与主题 ====================
    桌面客户端 → theme-desktop；手机/PWA → theme-mobile；桌面浏览器 → theme-web */
@@ -112,6 +119,63 @@ function showVerifyModal(email) {
   tick();
 }
 
+/* ==================== 登录记录（一键登录 / 清除记录） ==================== */
+function renderLastLogin() {
+  const last = getLastAccount();
+  const host = document.querySelector('.auth-card');
+  if (!host) return;
+  const old = document.getElementById('lastLogin');
+  if (old) old.remove();
+  if (!last || !last.account) return;
+
+  const box = el('div', { id: 'lastLogin', class: 'last-login' });
+  box.append(el('div', { class: 'll-info' },
+    el('span', { class: 'll-label' }, '上次登录'),
+    el('span', { class: 'll-name', title: last.account }, last.nickname || last.account)));
+  const oneClick = el('button', { type: 'button', class: 'btn btn-primary ll-btn' }, '一键登录');
+  const clear = el('button', { type: 'button', class: 'btn btn-ghost ll-btn' }, '清除记录');
+  box.append(el('div', { class: 'll-actions' }, oneClick, clear));
+  const tip = el('div', { class: 'll-tip' });
+  box.append(tip);
+
+  const form = $('#authForm');
+  form.parentNode.insertBefore(box, form);
+
+  oneClick.addEventListener('click', async () => {
+    oneClick.disabled = true;
+    tip.textContent = '正在恢复上次登录…';
+    try {
+      const { data } = await sbAuth.auth.getSession();
+      if (!data || !data.session) {
+        tip.textContent = '登录状态已过期，请输入密码登录';
+        oneClick.disabled = false;
+        return;
+      }
+      const { user } = await api.me();
+      setToken(data.session.access_token);
+      setUser(user);
+      state.user = user;
+      location.href = './index.html';
+    } catch (e) {
+      tip.textContent = (e && e.message) || '一键登录失败，请输入密码登录';
+      oneClick.disabled = false;
+    }
+  });
+
+  clear.addEventListener('click', async () => {
+    clear.disabled = true;
+    try { await sbAuth.auth.signOut(); } catch (e) { /* 忽略 */ }
+    clearAuth();
+    clearLastAccount();
+    box.remove();
+    const emailInput = $('#authEmail');
+    if (emailInput) emailInput.value = '';
+    const pwd = $('#authPassword');
+    if (pwd) pwd.value = '';
+    toast('已清除登录记录');
+  });
+}
+
 /* ==================== 登录 / 注册表单 ==================== */
 function bindAuth() {
   let mode = 'login';
@@ -176,6 +240,9 @@ function bindAuth() {
   setTimeout(reportSize, 400);
   setTimeout(reportSize, 800);
 
+  // 登录记录：上次登录的账号可一键登录，或清除记录
+  renderLastLogin();
+
   $('#authForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = $('#authEmail').value.trim();
@@ -198,6 +265,8 @@ function bindAuth() {
       setToken(data.token);
       setUser(data.user);
       state.user = data.user;
+      // 记录本次登录账号，便于下次一键登录
+      setLastAccount({ account: mode === 'login' ? email : (username || email), nickname: data.user.nickname || '', at: Date.now() });
       // 进入主界面（index.html 会检测登录态）
       location.href = './index.html';
     } catch (err) {
@@ -232,4 +301,12 @@ window.addEventListener('unhandledrejection', (e) => {
 });
 
 detectPlatform();
+// 桌面壳：登录阶段使用无边框小窗（自定义关闭按钮 + 卡片贴合尺寸）
+desktopCall('mode', { mode: 'auth' });
+// 预填上次登录账号，减少输入
+(function prefill() {
+  const last = getLastAccount();
+  const input = $('#authEmail');
+  if (last && last.account && input && !input.value) input.value = last.account;
+})();
 bindAuth();
