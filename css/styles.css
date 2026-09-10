@@ -502,27 +502,42 @@ html.theme-desktop body.list-only .sidebar { border-right: none; }
 .floatnav { display: none; }
 .t-bubbles { display: none; }
 
-/* 桌面大屏幕时成员面板默认收起，由 .show 控制 */
+/* 窄窗口：侧栏变抽屉（仅网页端；桌面客户端是真实窗口，不做抽屉，否则窗口收缩时侧栏会被移出可视区） */
 @media (max-width: 1000px) {
-  .members {
+  html:not(.theme-desktop) .members {
     position: fixed; right: 0; top: 0; bottom: 0; z-index: 60;
     transform: translateX(105%); transition: transform .25s ease;
     width: min(82vw, 300px);
     box-shadow: -18px 0 50px rgba(0,0,0,.5);
     display: flex;
   }
-  .members.show { transform: none; }
+  html:not(.theme-desktop) .members.show { transform: none; }
 }
 
 @media (max-width: 860px) {
-  .sidebar {
+  html:not(.theme-desktop) .sidebar {
     position: fixed; left: 0; top: 0; bottom: 0;
     width: min(86vw, 320px); min-width: 0;
     transform: translateX(-105%); transition: transform .25s ease;
   }
-  .sidebar.open { transform: none; box-shadow: 18px 0 50px rgba(0,0,0,.5); }
+  html:not(.theme-desktop) .sidebar.open { transform: none; box-shadow: 18px 0 50px rgba(0,0,0,.5); }
   .back { display: grid; }
   .messages { padding: 12px 12px 8px; }
   .msg-body { max-width: 82%; }
   .auth-card { padding: 30px 22px 20px; }
 }
+
+/* 桌面客户端：侧栏始终是常规列，宽度固定 */
+html.theme-desktop .sidebar,
+html.theme-desktop body.list-only .sidebar {
+  position: relative; left: auto; top: auto; bottom: auto;
+  width: var(--sidebar-w, 360px); min-width: var(--sidebar-w, 360px);
+  transform: none; box-shadow: none;
+}
+html.theme-desktop .members { display: none; }
+html.theme-desktop .members.show {
+  display: flex; position: relative; right: auto;
+  transform: none; width: 260px; box-shadow: none;
+  border-left: 1px solid var(--border);
+}
+html.theme-desktop .back { display: none; }
