@@ -4,7 +4,7 @@ import {
   getUnread, bumpUnread, resetUnread, getNotify, setNotify,
 } from './store.js';
 import * as api from './supabase.js';
-import { EMOJIS } from './emoji.js';
+import { EMOJIS, emojiSrc, splitEmoji } from './emoji.js';
 import { $, el, icon, toast, modal, confirmDialog, avatarEl, formatTime, formatListTime, formatDay, dayKey, lightbox } from './ui.js';
 
 const $app = $('#app');
@@ -218,6 +218,17 @@ function appTemplate() {
   </div>`;
 }
 
+// 未选中会话时：桌面端只显示会话列表，窗口横向收缩并锁定宽度（Telegram 式）
+function setListOnly(on) {
+  const list = !!on && state.isElectron;
+  document.body.classList.toggle('list-only', list);
+  if (!state.isElectron) return;
+  const side = $('#sidebar');
+  const w = side ? Math.ceil(side.getBoundingClientRect().width) : 0;
+  desktopCall('layout', { mode: list ? 'list' : 'chat', w });
+  setDesktopTitle('WMessage');
+}
+
 function enterApp() {
   // 桌面客户端：登录成功后展开为全尺寸聊天窗口
   setDesktopTitle('WMessage');
@@ -239,6 +250,8 @@ function enterApp() {
   const attach = $('#attachBtn');
   if (attach) attach.hidden = false;
   loadRooms();
+  // 桌面端：刚进入主界面时未选中会话 → 只显示列表
+  setListOnly(true);
 }
 
 /* ==================== 移动端面板（联系人/设置 tab） ==================== */
@@ -376,6 +389,7 @@ async function openRoom(room) {
   state.roomInfo = null;
   state.members = [];
   state.online = [];
+  setListOnly(false);
   resetUnread(room.id);
   renderRooms();
   pushUnreadToShell();
@@ -531,6 +545,19 @@ function imgSrc(path) {
   return path.startsWith('http') ? path : getApiBase() + path;
 }
 
+// 文本 → DOM：把内置表情替换为图片，其余按纯文本插入（安全，不使用 innerHTML）
+function richText(text) {
+  const frag = document.createDocumentFragment();
+  for (const part of splitEmoji(text)) {
+    if (part.emoji) {
+      frag.append(el('img', { class: 'emoji-inline', src: emojiSrc(part.emoji), alt: part.emoji, draggable: 'false' }));
+    } else if (part.text) {
+      frag.append(document.createTextNode(part.text));
+    }
+  }
+  return frag;
+}
+
 function buildMessageNode(msg, prevMsg) {
   const own = state.user && msg.userId === state.user.id;
   const grouped = !!(prevMsg && prevMsg.userId === msg.userId && prevMsg.type !== 'system' &&
@@ -550,7 +577,7 @@ function buildMessageNode(msg, prevMsg) {
     if (!own && state.activeRoom && state.activeRoom.type === 'channel' && !grouped) {
       bubble.append(el('div', { class: 'bubble-name' }, msg.nickname || ''));
     }
-    bubble.append(el('div', { class: 'bubble-text' }, msg.content));
+    bubble.append(el('div', { class: 'bubble-text' }, richText(msg.content)));
     bubble.append(el('span', { class: 'bubble-time' }, formatTime(msg.createdAt)));
     body.append(bubble);
   }
@@ -794,7 +821,8 @@ function toggleEmojiPanel() {
   if (!p.children.length) {
     const grid = el('div', { class: 'emoji-grid' });
     for (const e of EMOJIS) {
-      grid.append(el('button', { type: 'button', class: 'emoji-btn', onClick: () => insertEmoji(e) }, e));
+      grid.append(el('button', { type: 'button', class: 'emoji-btn', title: e, onClick: () => insertEmoji(e) },
+        el('img', { class: 'emoji-img', src: emojiSrc(e), alt: e, loading: 'lazy', draggable: 'false' })));
     }
     p.append(grid);
   }
@@ -1004,11 +1032,23 @@ function renderNotifyBtn() {
   const on = notifyEnabled();
   const btn = $('#notifyBtn');
   if (btn) {
-    btn.classList.toggle('active', on);
-    btn.title = state.isElectron ? (on ? '通知已开启（点击静音）' : '通知已静音（点击开启）') : '桌面通知';
+    // 开启/关闭用不同图标 + 不同颜色区分（铃铛 / 划线铃铛）
+    const use = btn.querySelector('use');
+    if (use) use.setAttribute('href', on ? '#i-bell' : '#i-bell-off');
+    btn.classList.toggle('notify-on', on);
+    btn.classList.toggle('notify-off', !on);
+    btn.title = state.isElectron
+      ? (on ? '通知已开启（点击静音）' : '通知已静音（点击开启）')
+      : (on ? '桌面通知已开启' : '桌面通知已关闭');
   }
+  const mIcon = $('#mNotifyBtn use');
+  if (mIcon) mIcon.setAttribute('href', on ? '#i-bell' : '#i-bell-off');
   const st = $('#mNotifyState');
-  if (st) st.textContent = on ? '已开启' : '未开启';
+  if (st) {
+    st.textContent = on ? '已开启' : '已静音';
+    st.classList.toggle('on', on);
+    st.classList.toggle('off', !on);
+  }
 }
 
 // 桌面端由外壳发系统通知，不需要浏览器授权；网页端沿用 Notification 权限
