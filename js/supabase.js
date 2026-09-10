@@ -57,10 +57,11 @@ async function currentUserId() {
 export async function login({ account, password }) {
   let email = String(account || '').trim();
   if (!email.includes('@')) {
-    // 用户名登录：解析出注册邮箱
-    const found = await sb.from('users').select('email').eq('username', email).maybeSingle();
-    if (!found.data || !found.data.email) throw new Error('该用户名或邮箱不存在,请核对后重试');
-    email = found.data.email;
+    // 用户名登录：由服务端函数解析出注册邮箱（未登录状态可调用）
+    const found = await sb.rpc('email_for_login', { account: email });
+    const resolved = typeof found.data === 'string' ? found.data : '';
+    if (found.error || !resolved) throw new Error('该用户名或邮箱不存在,请核对后重试');
+    email = resolved;
   }
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
   if (error) {
@@ -94,34 +95,33 @@ export async function resendVerification(email) {
 export async function register({ username, email, password, nickname }) {
   const uname = String(username || '').trim();
   const mail = String(email || '').trim().toLowerCase();
-  if (!/^.{2,20}$/.test(uname)) throw new Error('用户名需为 2-20 个字符');
+  const nick = String(nickname || '').trim() || uname;
+  if (!/^[^@\s]{2,20}$/.test(uname)) throw new Error('用户名需为 2-20 个字符（不含 @ 与空格）');
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) throw new Error('请输入有效的邮箱地址');
-  const dupU = await sb.from('users').select('id').eq('username', uname).maybeSingle();
-  if (dupU.data) throw new Error('该用户名已被使用');
-  const dupE = await sb.from('users').select('id').eq('email', mail).maybeSingle();
-  if (dupE.data) throw new Error('该邮箱已被注册');
-  const { data, error } = await sb.auth.signUp({ email: mail, password, options: { emailRedirectTo: EMAIL_REDIRECT } });
+  // 注册前查重：未登录状态由服务端函数判定（不泄露账号数据）
+  const chk = await sb.rpc('signup_conflict', { uname, mail });
+  if (chk.data === 'username') throw new Error('该用户名已被使用');
+  if (chk.data === 'email') throw new Error('该邮箱已被注册');
+  // 用户名/昵称随注册请求写入，由数据库在创建账号时同步建好资料行
+  const { data, error } = await sb.auth.signUp({
+    email: mail,
+    password,
+    options: {
+      emailRedirectTo: EMAIL_REDIRECT,
+      data: { username: uname, nickname: nick.slice(0, 40), avatar_color: pickColor(nick) },
+    },
+  });
   if (error) {
     const m = error.message || '';
     if (/already been registered/i.test(m)) throw new Error('该邮箱已被注册');
+    if (/already exists|duplicate key/i.test(m)) throw new Error('该用户名或邮箱已被注册');
     throw authErr(error);
   }
   const user = data.user;
   if (!user) throw new Error('注册失败，请稍后重试');
-  const profile = {
-    id: user.id,
-    username: uname,
-    email: mail,
-    nickname: (nickname || uname).slice(0, 40),
-    avatar_color: pickColor(nickname || uname),
-  };
-  const ins = await sb.from('users').insert(profile).select('*').single();
-  if (ins.error) {
-    await sb.auth.signOut();
-    throw new Error('该用户名或邮箱已被注册');
-  }
+  const profile = { id: user.id, username: uname, email: mail, nickname: nick.slice(0, 40), avatar_color: pickColor(nick) };
   return {
-    user: toUser(ins.data),
+    user: toUser(profile),
     token: data.session ? data.session.access_token : '',
     needVerify: !data.session,
   };
