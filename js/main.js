@@ -5,7 +5,7 @@ import {
 } from './store.js';
 import * as api from './supabase.js';
 import { EMOJIS } from './emoji.js';
-import { $, el, icon, toast, modal, avatarEl, formatTime, formatListTime, formatDay, dayKey, lightbox } from './ui.js';
+import { $, el, icon, toast, modal, confirmDialog, avatarEl, formatTime, formatListTime, formatDay, dayKey, lightbox } from './ui.js';
 
 const $app = $('#app');
 
@@ -1162,8 +1162,17 @@ function doSend() {
 
 /* ==================== 退出 ==================== */
 
-function logout(reason = '') {
-  if (!reason && !confirm('确定退出登录吗？')) return;
+async function logout(reason = '') {
+  if (!reason) {
+    // 自绘确认框：不使用浏览器原生 confirm
+    const ok = await confirmDialog({
+      title: '退出登录',
+      text: '确定要退出当前账号吗？',
+      okLabel: '退出登录',
+      cancelLabel: '取消',
+    });
+    if (!ok) return;
+  }
   clearAuth();
   if (state.unsubRoom) {
     state.unsubRoom();
