@@ -78,6 +78,13 @@ function setChatOpen(open) {
 
 async function boot() {
   if ('serviceWorker' in navigator) {
+    // 前端有更新时（新 Service Worker 接管）自动刷新一次，避免停留在旧版本
+    let swDone = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (swDone) return;
+      swDone = true;
+      location.reload();
+    });
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   }
   const token = getToken();
