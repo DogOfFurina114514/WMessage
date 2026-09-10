@@ -514,10 +514,67 @@ function openRoomMenu(room, x, y) {
   placeMenu(menu, x, y);
 }
 
+/* ==================== 取消选中会话 ==================== */
+
+function closeRoom() {
+  if (!state.activeRoom) return;
+  if (state.unsubRoom) {
+    state.unsubRoom();
+    state.unsubRoom = null;
+  }
+  state.activeRoom = null;
+  state.roomInfo = null;
+  state.members = [];
+  state.online = [];
+  state.replyTo = null;
+  renderReplyBar();
+  toggleChatSearch(false);
+  closeCtxMenu();
+
+  // 消息区与底部状态复位
+  const msgs = $('#messages');
+  if (msgs) msgs.innerHTML = '';
+  const loadMore = $('#loadMore');
+  if (loadMore) loadMore.hidden = true;
+  const typing = $('#typing');
+  if (typing) typing.textContent = '';
+  const morePop = $('#morePop');
+  if (morePop) morePop.hidden = true;
+  const emojiPanel = $('#emojiPanel');
+  if (emojiPanel) emojiPanel.classList.remove('open');
+  state.emojiOpen = false;
+  showEmpty('选择一个会话开始聊天');
+
+  // 头部复位
+  const title = $('#roomTitle');
+  if (title) title.textContent = 'WMessage';
+  const sub = $('#roomSub');
+  if (sub) sub.textContent = '选择一个会话开始聊天';
+  const av = $('#headAvatar');
+  if (av) av.hidden = true;
+  const memBtn = $('#membersBtn');
+  if (memBtn) memBtn.hidden = true;
+  const moreBtn = $('#moreBtn');
+  if (moreBtn) moreBtn.hidden = true;
+  const csBtn = $('#chatSearchBtn');
+  if (csBtn) csBtn.hidden = true;
+  const members = $('#members');
+  if (members) members.classList.remove('show');
+
+  if (state.isMobile) setChatOpen(false);
+  renderRooms();
+  setListOnly(true);       // 桌面端：收回成只显示会话列表
+}
+
 /* ==================== 打开会话 ==================== */
 
 async function openRoom(room) {
-  if (!room || (state.activeRoom && state.activeRoom.id === room.id)) return;
+  if (!room) return;
+  // 点击已选中的会话 = 取消选中（桌面端收回成仅列表）
+  if (state.activeRoom && state.activeRoom.id === room.id) {
+    closeRoom();
+    return;
+  }
   if (state.unsubRoom) {
     state.unsubRoom();
     state.unsubRoom = null;
