@@ -138,6 +138,23 @@ input, textarea { font: inherit; color: var(--text); }
 
 .auth-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; font-size: 12px; color: var(--muted-2); gap: 8px; }
 .auth-error { color: var(--red); font-size: 12px; min-height: 18px; margin-top: 4px; }
+
+/* 登录记录：上次登录账号 + 一键登录 / 清除记录 */
+.last-login {
+  margin: 0 0 14px; padding: 12px 14px;
+  border: 1px solid var(--border); border-radius: 12px;
+  background: var(--panel-2);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.last-login .ll-info { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.last-login .ll-label { font-size: 11px; color: var(--muted-2); flex: none; letter-spacing: 1px; }
+.last-login .ll-name {
+  font-size: 13px; color: var(--text); font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.last-login .ll-actions { display: flex; gap: 8px; }
+.last-login .ll-btn { flex: 1; padding: 8px 10px; font-size: 12.5px; }
+.last-login .ll-tip { font-size: 11.5px; color: var(--muted-2); min-height: 14px; line-height: 1.5; }
 .auth-hint { min-height: 18px; font-size: 12px; margin: 0 0 10px; color: var(--muted-2); transition: color .15s; }
 .auth-hint.ok { color: var(--green); }
 .auth-hint.bad { color: var(--red); }
