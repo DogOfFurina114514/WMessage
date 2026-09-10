@@ -18,7 +18,7 @@ function pickColor(s) {
 }
 
 function toUser(row) {
-  return row ? { id: row.id, username: row.username, nickname: row.nickname, avatarColor: row.avatar_color, createdAt: row.created_at } : null;
+  return row ? { id: row.id, username: row.username, nickname: row.nickname, email: row.email || '', avatarColor: row.avatar_color, createdAt: row.created_at } : null;
 }
 function toMsg(row) {
   const u = row.users || {};
@@ -138,6 +138,30 @@ export async function me() {
   const { data: row } = await sb.from('users').select('*').eq('id', id).single();
   if (!row) throw Object.assign(new Error('登录已失效'), { status: 401 });
   return { user: toUser(row) };
+}
+
+// 更新个人资料（昵称 / 头像颜色）
+export async function updateProfile({ nickname, avatarColor }) {
+  const id = await currentUserId();
+  const patch = {};
+  if (typeof nickname === 'string' && nickname.trim()) patch.nickname = nickname.trim().slice(0, 40);
+  if (typeof avatarColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(avatarColor)) patch.avatar_color = avatarColor;
+  if (!Object.keys(patch).length) return { user: null };
+  const { data, error } = await sb.from('users').update(patch).eq('id', id).select('*').single();
+  if (error) throw new Error(error.message || '保存失败');
+  return { user: toUser(data) };
+}
+
+// 修改密码（先校验当前密码，再更新）
+export async function changePassword({ current, next }) {
+  const { data } = await sb.auth.getUser();
+  const email = data && data.user ? data.user.email : '';
+  if (!email) throw new Error('登录已失效，请重新登录');
+  const check = await sb.auth.signInWithPassword({ email, password: current });
+  if (check.error) throw new Error('当前密码不正确');
+  const { error } = await sb.auth.updateUser({ password: next });
+  if (error) throw new Error(error.message || '修改失败');
+  return true;
 }
 
 /* ==================== 会话 ==================== */
