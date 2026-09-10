@@ -1,9 +1,10 @@
 // WMessage Service Worker —— PWA 离线缓存
-const CACHE = 'wmessage-v7'; // 升级版本号：清空旧缓存，强制所有客户端拉到最新前端
+const CACHE = 'wmessage-v8'; // 升级版本号：清空旧缓存，强制所有客户端拉到最新前端
 const SHELL = [
   './',
   './index.html',
   './login.html',
+  './settings.html',
   './css/styles.css',
   './js/config.js',
   './js/store.js',
@@ -13,6 +14,7 @@ const SHELL = [
   './js/ws.js',
   './js/main.js',
   './js/login.js',
+  './js/settings.js',
   './manifest.webmanifest',
   './logo.svg',
   './icons/icon-192.png',
