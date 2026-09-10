@@ -12,3 +12,17 @@ Thumbs.db
 # 编辑器
 .vscode/
 .idea/
+
+# 安卓签名：口令配置与密钥库（严禁提交）
+android/keystore.properties
+android/wmessage.keystore
+*.keystore
+*.jks
+
+# 安卓构建产物与内置资源副本（由 build-apk.ps1 生成）
+android/build/
+android/assets/www/
+
+# 打包产物
+WMessage-android.apk
+
