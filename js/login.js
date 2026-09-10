@@ -77,7 +77,8 @@ function showVerifyModal(email) {
   const resendBtn = el('button', { type: 'button', class: 'btn btn-primary', style: 'margin-top:14px' }, '重发验证邮件');
   const body = el('div', null,
     el('div', { style: 'color:var(--text);line-height:1.8;font-size:14px' },
-      `验证邮件已发送至 <b>${email}</b>。<br>请到邮箱（含垃圾箱）查看，点击「验证邮箱并登录」完成验证后再来登录。`),
+      '验证邮件已发送至 ', el('b', null, email), '。', el('br'),
+      '请到邮箱（含垃圾箱）查看，点击「验证邮箱并登录」完成验证后再来登录。'),
     cooldownBox,
     resendBtn
   );
