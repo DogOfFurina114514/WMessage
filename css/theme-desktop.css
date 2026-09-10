@@ -1,30 +1,37 @@
-/* ============ 主题：电脑端（桌面布局与控件风格：小圆角、细描边、柔和高亮） ============ */
+/* ============ 主题：电脑端（Telegram Night 配色 + 保留圆角风格） ============ */
 html.theme-desktop, html.theme-desktop body {
-  --bg: #111318;
-  --panel: #1b1e24;
-  --panel-2: #24272e;
-  --border: #ffffff14;
-  --border-2: #ffffff24;
-  --text: #f3f4f6;
-  --muted: #a8adb8;
-  --muted-2: #7c828d;
-  --accent: #4cc2ff;
-  --accent-2: #0078d4;
-  --green: #6ccb5f;
-  --red: #ff99a4;
-  --scrollbar: #3a3f4a;
-  --radius-btn: 6px;
-  --radius-icon: 6px;
-  --radius-item: 6px;
-  --radius-room-avatar: 6px;
-  --radius-bubble: 8px;
-  --surface: #1b1e24f0;
-  --surface-strong: #20242bf0;
-  --bubble: #2b2f38;
-  --bubble-border: #ffffff10;
-  --bubble-own: linear-gradient(135deg, #1364b4, #0d5aa5);
-  --item-active: #1f2d3c;
-  --item-active-border: transparent;
+  --bg: #0e1621;              /* 聊天区背景 */
+  --panel: #17212b;           /* 侧栏 / 标题栏 */
+  --panel-2: #202b36;         /* 悬停 / 次级面板 */
+  --hover: #202b36;
+  --search-bg: #242f3d;       /* 搜索框 / 输入框 */
+  --pop-bg: #1c2733;          /* 弹出层 */
+  --border: #ffffff0f;
+  --border-2: #ffffff1f;
+  --text: #ffffff;
+  --muted: #7f91a4;
+  --muted-2: #6c7883;
+  --accent: #5288c1;          /* Telegram 蓝 */
+  --accent-2: #64b5ef;
+  --green: #4dcd5e;
+  --red: #e05a5a;
+  --scrollbar: #2f3b47;
+  --badge: #4082bc;
+  --day-pill: rgba(0, 0, 0, .22);
+  --bubble: #182533;          /* 对方气泡 */
+  --bubble-own: #2b5278;      /* 自己气泡 */
+  --bubble-own-text: #ffffff;
+  --name-color: #64b5ef;
+  --time-in-bubble: #7f91a4;
+  --time-in-bubble-own: rgba(255, 255, 255, .62);
+  --item-active: #2b5278;     /* 选中会话 */
+  --radius-btn: 10px;
+  --radius-icon: 10px;
+  --radius-item: 12px;
+  --radius-room-avatar: 50%;
+  --radius-bubble: 14px;
+  --surface: #17212bf0;
+  --surface-strong: #1c2733f0;
   --font: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, 'Microsoft YaHei', sans-serif;
 }
 
@@ -43,82 +50,50 @@ html.theme-desktop .auth-card {
 }
 html.theme-desktop .app { background: var(--bg); }
 
-/* 背景：细微层次渐变 + 顶部光晕 */
-html.theme-desktop body {
-  background:
-    radial-gradient(1200px 500px at 18% -10%, rgba(76, 194, 255, 0.07), transparent 60%),
-    radial-gradient(900px 420px at 90% 110%, rgba(0, 120, 212, 0.05), transparent 60%),
-    #111318;
-}
+/* 侧栏与聊天区分色（Telegram 的层次感） */
+html.theme-desktop .sidebar { background: var(--panel); border-right: 1px solid #0a1017; }
+html.theme-desktop .main-header { background: var(--panel); border-bottom: 1px solid #0a1017; }
+html.theme-desktop .composer { background: var(--panel); }
+html.theme-desktop .side-head { border: none; }
 
-/* 窗口标题栏（Electron 内视觉模拟） */
-html.theme-desktop .main-header {
-  height: 48px;
-  background: #1b1e24;
-  border-bottom: 1px solid #ffffff10;
-}
-html.theme-desktop .room-title { font-size: 14px; font-weight: 600; }
-
-/* 桌面控件：小圆角 + 细边框 + 柔和高亮 */
+/* 桌面控件：保留圆角 + 柔和高亮 */
 html.theme-desktop .icon-btn {
   background: transparent;
-  border: 1px solid #ffffff18;
-  border-radius: 5px;
+  border: none;
+  border-radius: 10px;
+  color: var(--muted);
 }
-html.theme-desktop .icon-btn:hover {
-  background: linear-gradient(135deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
-  border-color: #ffffff2e;
-}
-html.theme-desktop .room-item { border-radius: 6px; }
-html.theme-desktop .room-item:hover {
-  background: linear-gradient(135deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
-}
-html.theme-desktop .room-item.active {
-  background: #1f2d3c;
-  border: 1px solid rgba(76, 194, 255, 0.25);
-}
-html.theme-desktop .room-item.active .room-name { color: #cfeaff; }
+html.theme-desktop .icon-btn:hover { background: var(--panel-2); color: var(--text); }
+html.theme-desktop .room-item { border-radius: 10px; }
+html.theme-desktop .room-item.active .room-name { color: #fff; }
+html.theme-desktop .room-item.active .room-preview { color: rgba(255,255,255,.75); }
 
-html.theme-desktop .bubble { border-radius: 8px; border-top-left-radius: 3px; }
-html.theme-desktop .msg.own .bubble { border-top-right-radius: 3px; }
-
-html.theme-desktop .composer textarea { border-radius: 8px; }
-
-/* 分割线感 */
-html.theme-desktop .side-head,
-html.theme-desktop .main-header,
-html.theme-desktop .composer {
-  border-color: #ffffff12;
-}
-
-/* 侧栏 NavigationView 式 */
-html.theme-desktop .side-head {
-  height: 48px;
-  padding: 0 16px;
-}
-html.theme-desktop .sidebar {
-  border-right: 1px solid #ffffff12;
-  background: #16181d;
-}
+/* 消息气泡：保留圆角与"贴边角"细节 */
+html.theme-desktop .bubble { border-radius: 14px; border-bottom-left-radius: 6px; }
+html.theme-desktop .msg.own .bubble { border-bottom-right-radius: 6px; border-bottom-left-radius: 14px; }
+html.theme-desktop .msg.grouped .bubble { border-top-left-radius: 6px; border-bottom-left-radius: 14px; }
+html.theme-desktop .msg.own.grouped .bubble { border-top-right-radius: 6px; border-bottom-right-radius: 14px; border-top-left-radius: 14px; }
 
 /* 弹窗/Flyout */
 html.theme-desktop .modal {
-  background: #20242b;
-  border: 1px solid #ffffff1a;
-  border-radius: 8px;
+  background: var(--pop-bg);
+  border: 1px solid var(--border-2);
+  border-radius: 14px;
   box-shadow: 0 12px 40px rgba(0,0,0,.55);
 }
-html.theme-desktop .more-pop, html.theme-desktop .search-pop, html.theme-desktop .emoji-panel {
-  background: #20242b;
-  border-color: #ffffff1a;
-  border-radius: 8px;
+html.theme-desktop .more-pop, html.theme-desktop .search-pop,
+html.theme-desktop .emoji-panel, html.theme-desktop .fab-pop {
+  background: var(--pop-bg);
+  border-color: var(--border-2);
+  border-radius: 12px;
 }
 
 /* 滚动条 */
-html.theme-desktop ::-webkit-scrollbar { width: 12px; }
+html.theme-desktop ::-webkit-scrollbar { width: 10px; }
 html.theme-desktop ::-webkit-scrollbar-thumb {
-  background: #3a3f4a;
-  border: 3px solid #111318;
+  background: var(--scrollbar);
+  border: 3px solid transparent;
+  background-clip: content-box;
   border-radius: 6px;
 }
 
@@ -128,14 +103,11 @@ html.theme-desktop .auth input,
 html.theme-desktop .auth button,
 html.theme-desktop .auth .auth-tabs,
 html.theme-desktop .auth .auth-brand { -webkit-app-region: no-drag; }
-html.theme-desktop .main-header,
-html.theme-desktop .side-head { -webkit-app-region: drag; }
-html.theme-desktop .main-header button,
-html.theme-desktop .side-head button { -webkit-app-region: no-drag; }
 
 /* 主按钮 */
 html.theme-desktop .btn-primary {
-  background: linear-gradient(135deg, #2b88d8, #1364b4);
-  border: 1px solid #4cc2ff55;
-  border-radius: 6px;
+  background: var(--accent);
+  border: none;
+  border-radius: 10px;
 }
+html.theme-desktop .btn-primary:hover { background: #5f97d0; }
