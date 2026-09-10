@@ -58,7 +58,7 @@ export function resetUnread(roomId) {
   }
 }
 
-export const getNotify = () => read(K.notify, false);
+export const getNotify = (d = false) => read(K.notify, d);
 export const setNotify = (v) => write(K.notify, v);
 
 /* 登录记录：记住上次登录的账号，支持一键登录 / 清除记录 */
