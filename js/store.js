@@ -5,6 +5,7 @@ const K = {
   api: 'wmessage_api_base',
   unread: 'wmessage_unread',
   notify: 'wmessage_notify',
+  last: 'wmessage_last_account',
 };
 
 function read(key, def) {
@@ -59,3 +60,10 @@ export function resetUnread(roomId) {
 
 export const getNotify = () => read(K.notify, false);
 export const setNotify = (v) => write(K.notify, v);
+
+/* 登录记录：记住上次登录的账号，支持一键登录 / 清除记录 */
+export const getLastAccount = () => read(K.last, null);
+export const setLastAccount = (v) => write(K.last, v);
+export function clearLastAccount() {
+  localStorage.removeItem(K.last);
+}
