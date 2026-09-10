@@ -592,23 +592,7 @@ input, textarea { font: inherit; color: var(--text); }
 .ctx-menu button .ic { width: 18px; height: 18px; color: var(--muted); }
 .ctx-menu button.danger, .ctx-menu button.danger .ic { color: var(--red); }
 
-/* ============ 消息悬停操作条 ============ */
-.msg { position: relative; }
-.msg-actions {
-  position: absolute; top: -14px; right: 8px; z-index: 12;
-  display: none; align-items: center; gap: 2px; padding: 3px;
-  background: var(--pop-bg, var(--panel-2)); border: 1px solid var(--border-2);
-  border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.45);
-}
-.msg.own .msg-actions { right: auto; left: 8px; }
-.msg:hover .msg-actions { display: flex; }
-.ma-btn {
-  width: 30px; height: 30px; border: none; background: none; cursor: pointer;
-  border-radius: 8px; color: var(--muted); display: grid; place-items: center;
-}
-.ma-btn:hover { background: var(--hover, var(--panel-2)); color: var(--text); }
-.ma-btn.danger:hover { color: var(--red); }
-.ma-btn .ic { width: 17px; height: 17px; }
+/* ============ 消息（右键菜单操作，无悬停条） ============ */
 .msg.flash .bubble { animation: msg-flash 1.1s ease; }
 @keyframes msg-flash {
   0%, 100% { box-shadow: 0 0 0 0 rgba(82,136,193,0); }
@@ -655,6 +639,11 @@ input, textarea { font: inherit; color: var(--text); }
 .chat-search input:focus { border-color: var(--accent); outline: none; }
 .chat-search .cs-count { font-size: 12px; color: var(--muted-2); flex: none; }
 .msg.hit .bubble { box-shadow: 0 0 0 1px var(--accent); }
+
+/* 关闭动画（设置 - 高级） */
+body.no-anim *, body.no-anim *::before, body.no-anim *::after {
+  animation: none !important; transition: none !important;
+}
 
 /* 设置页（独立窗口：铺满整个页面） */
 body.settings-page { overflow: hidden; }
