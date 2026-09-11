@@ -730,6 +730,7 @@ html.theme-desktop body.list-only .sidebar { border-right: none; }
 
 /* ============ 移动端视图 / 悬浮底栏（仅 theme-mobile 内启用显示规则） ============ */
 .mobile-views { display: none; }
+.drawer, .drawer-mask { display: none; }
 .floatnav { display: none; }
 .t-bubbles { display: none; }
 
