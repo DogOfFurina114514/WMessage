@@ -309,7 +309,7 @@ input, textarea { font: inherit; color: var(--text); }
 .messages-area { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .load-more { margin: 8px auto; padding: 6px 16px; background: var(--panel-2); color: var(--muted); border: 1px solid var(--border); border-radius: 16px; font-size: 12px; cursor: pointer; flex: none; }
 .load-more:hover { color: var(--text); }
-.messages { flex: 1; overflow-y: auto; padding: 16px 20px 12px; }
+.messages { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 16px 20px 12px; }
 
 .empty { flex: 1; display: grid; place-items: center; color: var(--muted-2); text-align: center; padding: 20px; line-height: 2; }
 .empty .big { font-size: 46px; margin-bottom: 10px; color: var(--muted-2); opacity: .55; }
@@ -340,7 +340,7 @@ input, textarea { font: inherit; color: var(--text); }
 }
 .msg.own.grouped .bubble { border-bottom-right-radius: var(--radius-bubble, 14px); border-top-right-radius: 6px; }
 .bubble-name { grid-column: 1; font-size: 13.5px; font-weight: 600; color: var(--name-color, var(--accent)); margin-bottom: 2px; }
-.bubble-text { grid-column: 1; }
+.bubble-text { grid-column: 1; min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
 .bubble-time {
   grid-column: 2; align-self: end; white-space: nowrap;
   font-size: 11px; color: var(--time-in-bubble, var(--muted-2)); margin-left: 2px; padding-top: 6px;
@@ -691,6 +691,9 @@ body.settings-page.mobile-settings .set-row-sub { font-size: 13px; }
 /* 移动端底部导航（与主界面一致） */
 body.mobile-settings .tabbar { display: flex; }
 body.settings-page.mobile-settings .tabbar { display: flex; }
+
+.m-topbar { display: none; }
+html.theme-mobile .m-topbar { display: flex; }
 
 /* ============ 自绘 SVG 图标（禁用 emoji 界面图标） ============ */
 .ic {
