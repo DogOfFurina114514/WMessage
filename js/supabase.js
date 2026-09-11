@@ -176,7 +176,10 @@ export async function changePassword({ current, next }) {
 
 // 退出登录：结束服务端会话（清除刷新令牌），避免"退出后又自动登录"
 export async function signOut() {
-  try { await sb.auth.signOut(); } catch { /* 忽略网络错误 */ }
+  try {
+    // 服务端登出可能很慢：最多等 1.5 秒，本地会话无论如何都会被清除
+    await Promise.race([sb.auth.signOut(), new Promise(function (r) { setTimeout(r, 1500); })]);
+  } catch (e) { /* 忽略网络错误 */ }
 }
 
 // 会话过期时尝试续期（返回是否成功），用于页面切换时避免误判为未登录
