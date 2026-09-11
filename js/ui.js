@@ -89,12 +89,14 @@ export function confirmDialog({ title = '确认', text = '', okLabel = '确定',
       settled = true;
       resolve(v);
     };
-    modal({
+    const m = modal({
       title,
       body: el('div', { style: 'line-height:1.9;font-size:14px;color:var(--text)' }, text),
+      // keepOpen：先给出结果再由我们自己关闭 —— modal() 内部是"先 close 再 onClick"，
+      // 若不加 keepOpen，close() 触发的 onClose 会先把结果定成"取消"，导致确认永远无效
       actions: [
-        { label: cancelLabel, onClick: () => done(false) },
-        { label: okLabel, primary: true, onClick: () => done(true) },
+        { label: cancelLabel, keepOpen: true, onClick: () => { done(false); m.close(); } },
+        { label: okLabel, primary: true, keepOpen: true, onClick: () => { done(true); m.close(); } },
       ],
       onClose: () => done(false),
     });
