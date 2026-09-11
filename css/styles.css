@@ -649,6 +649,48 @@ body.no-anim *, body.no-anim *::before, body.no-anim *::after {
 body.settings-page { overflow: hidden; }
 body.settings-page .settings { height: 100vh; height: 100dvh; }
 body.settings-page .set-nav { width: 300px; }
+body.settings-page .tabbar { display: none; }
+
+/* 设置页 · 移动端（Telegram Android：一级列表 + 二级子页，底部导航保留） */
+body.settings-page.mobile-settings { padding-bottom: 0; }
+body.settings-page.mobile-settings .settings { display: block; height: auto; min-height: 100dvh; }
+body.settings-page.mobile-settings .set-nav {
+  width: 100%; border-right: none; background: var(--bg);
+  padding-bottom: calc(72px + env(safe-area-inset-bottom));
+}
+body.settings-page.mobile-settings .set-nav-head {
+  font-size: 26px; font-weight: 700; height: auto;
+  padding: calc(12px + env(safe-area-inset-top)) 16px 6px; gap: 8px;
+}
+body.settings-page.mobile-settings .set-nav-head .icon-btn { background: none; border: none; color: var(--muted); }
+body.settings-page.mobile-settings .set-profile { padding: 6px 16px 14px; }
+body.settings-page.mobile-settings .set-profile .sp-name { font-size: 18px; }
+body.settings-page.mobile-settings .set-list { padding: 0 8px; }
+body.settings-page.mobile-settings .set-item {
+  font-size: 16px; padding: 14px 12px; border-radius: 14px;
+  display: flex; align-items: center; gap: 14px;
+}
+body.settings-page.mobile-settings .set-item .ic { width: 22px; height: 22px; }
+body.settings-page.mobile-settings .set-item .set-row-arrow { margin-left: auto; color: var(--muted-2); font-size: 18px; }
+body.settings-page.mobile-settings .set-foot { border-top: none; padding: 8px; }
+body.settings-page.mobile-settings .set-body {
+  display: none; padding: 0 12px calc(80px + env(safe-area-inset-bottom));
+  background: var(--bg);
+}
+body.settings-page.mobile-settings.mset-sub .set-body { display: block; }
+body.settings-page.mobile-settings.mset-sub .set-profile,
+body.settings-page.mobile-settings.mset-sub .set-list,
+body.settings-page.mobile-settings.mset-sub .set-foot { display: none; }
+body.settings-page.mobile-settings .set-body-head { display: none; }
+body.settings-page.mobile-settings .set-pane { max-width: none; }
+body.settings-page.mobile-settings .set-group { border-radius: 14px; }
+body.settings-page.mobile-settings .set-field input { font-size: 16px; }
+body.settings-page.mobile-settings .set-row-title { font-size: 16px; }
+body.settings-page.mobile-settings .set-row-sub { font-size: 13px; }
+
+/* 移动端底部导航（与主界面一致） */
+body.mobile-settings .tabbar { display: flex; }
+body.settings-page.mobile-settings .tabbar { display: flex; }
 
 /* ============ 自绘 SVG 图标（禁用 emoji 界面图标） ============ */
 .ic {
