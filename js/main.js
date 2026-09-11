@@ -103,7 +103,18 @@ async function boot() {
       return;
     } catch (e) {
       if (e.status === 401) {
-        // 会话确实失效：清除本地凭证并回登录页
+        // 会话可能只是过期：先尝试续期，仍失败才判定为未登录
+        let okRefresh = false;
+        try { okRefresh = await api.refreshSession(); } catch (e2) { okRefresh = false; }
+        if (okRefresh) {
+          try {
+            const again = await api.me();
+            state.user = again.user;
+            setUser(again.user);
+            enterApp();
+            return;
+          } catch (e3) { /* 继续往下清除 */ }
+        }
         clearAuth();
         location.replace('./login.html');
         return;
@@ -1896,15 +1907,19 @@ window.wmessageAndroidOpenRoom = function (roomId) {
 
 async function logout(reason = '') {
   if (!reason) {
-    // 自绘确认框：不使用浏览器原生 confirm
-    const ok = await confirmDialog({
-      title: '退出登录',
-      text: '确定要退出当前账号吗？',
-      okLabel: '退出登录',
-      cancelLabel: '取消',
-    });
+    // 自绘确认框：任何异常都不能阻塞退出
+    let ok = true;
+    try {
+      ok = await confirmDialog({
+        title: '退出登录',
+        text: '确定要退出当前账号吗？',
+        okLabel: '退出登录',
+        cancelLabel: '取消',
+      });
+    } catch (e) { ok = true; }
     if (!ok) return;
   }
+  try { await api.signOut(); } catch (e) { /* 忽略 */ }
   clearAuth();
   if (state.unsubRoom) {
     state.unsubRoom();
