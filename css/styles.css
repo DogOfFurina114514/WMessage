@@ -694,6 +694,7 @@ body.settings-page.mobile-settings .tabbar { display: flex; }
 
 .m-topbar { display: none; }
 html.theme-mobile .m-topbar { display: flex; }
+.tabbar { display: none; }                     /* 底部导航只在手机端显示（避免桌面端露出两个裸按钮） */
 
 /* ============ 自绘 SVG 图标（禁用 emoji 界面图标） ============ */
 .ic {
