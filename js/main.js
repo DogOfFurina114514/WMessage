@@ -1919,7 +1919,8 @@ async function logout(reason = '') {
     } catch (e) { ok = true; }
     if (!ok) return;
   }
-  try { await api.signOut(); } catch (e) { /* 忽略 */ }
+  // 不等待服务端登出（网络慢时会表现为按钮没反应），本地立即清除并回登录页
+  try { api.signOut(); } catch (e) { /* 忽略 */ }
   clearAuth();
   if (state.unsubRoom) {
     state.unsubRoom();
