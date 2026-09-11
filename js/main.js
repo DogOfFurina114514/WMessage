@@ -65,13 +65,13 @@ function setDesktopTitle(text) {
   desktopCall('title', { text });
 }
 
+// 移动端：回到会话列表视图（关闭联系人页/设置页）
 function setMobileView(view) {
   state.mobileView = view;
-  if (state.isMobile) {
-    document.body.classList.remove('mview-chats', 'mview-contacts', 'mview-settings');
-    document.body.classList.add('mview-' + view);
-    document.querySelectorAll('.fn-item').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
-  }
+  if (!state.isMobile) return;
+  document.body.classList.remove('mtab-contacts');
+  const bar = $('#tabBar');
+  if (bar) bar.querySelectorAll('.tab-item').forEach((b) => b.classList.toggle('active', b.dataset.tab === 'chats'));
 }
 
 function setChatOpen(open) {
@@ -132,6 +132,11 @@ function appTemplate() {
     <!-- 网页端主题：上升气泡背景（仅 theme-web 显示） -->
     <div class="t-bubbles"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
     <aside class="sidebar" id="sidebar">
+      <!-- 移动端顶栏（Telegram Android：标题 + 搜索） -->
+      <div class="m-topbar">
+        <div class="m-title" id="mTitle">WMessage</div>
+        <button class="icon-btn" id="mSearchToggle" title="搜索"><svg class="ic"><use href="#i-search"></use></svg></button>
+      </div>
       <div class="side-head">
         <button class="icon-btn" id="sideMenuBtn" title="菜单"><svg class="ic"><use href="#i-menu"></use></svg></button>
         <div class="search-box">
@@ -202,10 +207,11 @@ function appTemplate() {
       <div class="members-list" id="membersList"></div>
     </aside>
 
-    <!-- 移动端视图：联系人 / 设置（手机端 tab 页，仅 theme-mobile 显示） -->
+    <!-- 移动端：设置页（Telegram Android：整屏列表 + 子页） -->
     <div class="mobile-views">
       <section class="mview" id="mContacts">
         <div class="mview-head">
+          <button class="icon-btn" id="mContactsBack"><svg class="ic"><use href="#i-back"></use></svg></button>
           <div class="mview-title">联系人</div>
           <div class="mview-actions">
             <button class="icon-btn" id="mDiscoverBtn" title="发现频道"><svg class="ic"><use href="#i-compass"></use></svg></button>
@@ -217,22 +223,16 @@ function appTemplate() {
         </div>
         <div class="mlist" id="mDmList"></div>
       </section>
-      <section class="mview" id="mSettings">
-        <div class="mview-head"><div class="mview-title">设置</div></div>
-        <div class="mprofile" id="mProfile"></div>
-        <div class="msetting-list">
-          <div class="msetting-item" id="mNotifyBtn"><span class="micon"><svg class="ic"><use href="#i-bell"></use></svg></span> 桌面通知 <span class="right" id="mNotifyState">未开启</span></div>
-          <div class="msetting-item" id="mVersionItem"><span class="micon"><svg class="ic"><use href="#i-info"></use></svg></span> API 地址 <span class="right" id="mVersion"></span></div>
-          <div class="msetting-item" id="mLogoutBtn"><span class="micon"><svg class="ic"><use href="#i-logout"></use></svg></span> 退出登录 <span class="right">›</span></div>
-        </div>
-      </section>
     </div>
 
-    <!-- 悬浮底栏（移动端浮动导航） -->
-    <nav class="floatnav" id="floatNav">
-      <button type="button" class="fn-item active" data-view="chats"><span class="fn-icon"><svg class="ic"><use href="#i-chat"></use></svg></span><span class="fn-label">会话</span></button>
-      <button type="button" class="fn-item" data-view="contacts"><span class="fn-icon"><svg class="ic"><use href="#i-members"></use></svg></span><span class="fn-label">联系人</span></button>
-      <button type="button" class="fn-item" data-view="settings"><span class="fn-icon"><svg class="ic"><use href="#i-gear"></use></svg></span><span class="fn-label">设置</span></button>
+    <!-- 移动端底部导航（最新版 Telegram Android：底部栏，无抽屉） -->
+    <nav class="tabbar" id="tabBar">
+      <button type="button" class="tab-item active" data-tab="chats">
+        <svg class="ic"><use href="#i-chat"></use></svg><span>会话</span>
+      </button>
+      <button type="button" class="tab-item" data-tab="settings">
+        <svg class="ic"><use href="#i-gear"></use></svg><span>设置</span>
+      </button>
     </nav>
   </div>`;
 }
@@ -264,6 +264,7 @@ function enterApp() {
   renderUserChip();
   renderNotifyBtn();
   bindShellMessages();
+  if (state.isMobile) { bindLongPress($('#roomList')); bindLongPress($('#messages')); }
   pushUnreadToShell();
   if (state.isMobile) {
     setMobileView('chats');
@@ -1513,6 +1514,11 @@ function notify(msg) {
   const title = msg.nickname || '新消息';
   const body = msg.type === 'image' ? '[图片]' : (msg.content || '').slice(0, 120);
   if (getSound()) playPing();
+  // 安卓端：走系统通知栏（点击通知回到对应会话）
+  if (isAndroidApp()) {
+    androidNotify(title, body, msg.roomId);
+    return;
+  }
   // 桌面端：交给外壳发 Windows 通知（点击通知可直接打开该会话）
   if (state.isElectron) {
     desktopCall('notify', { title, body, roomId: msg.roomId });
@@ -1643,15 +1649,24 @@ function bindAppEvents() {
     });
   }
 
-  // 移动端：悬浮底栏 + 联系人/设置视图
-  const floatNav = $('#floatNav');
-  if (floatNav) {
-    floatNav.addEventListener('click', (e) => {
-      const btn = e.target.closest('.fn-item');
-      if (btn) setMobileView(btn.dataset.view);
+  // 移动端：底部导航（会话 / 设置）
+  const tabBar = $('#tabBar');
+  if (tabBar) {
+    tabBar.addEventListener('click', (e) => {
+      const btn = e.target.closest('.tab-item');
+      if (btn) setMobileTab(btn.dataset.tab);
     });
-    bindSearch('#mSearchInput', '#mSearchPop');
   }
+  const mContactsBack = $('#mContactsBack');
+  if (mContactsBack) mContactsBack.addEventListener('click', closeMobileContacts);
+  const mSearchToggle = $('#mSearchToggle');
+  if (mSearchToggle) {
+    mSearchToggle.addEventListener('click', () => {
+      const inp = $('#searchInput');
+      if (inp) { inp.focus(); inp.select && inp.select(); }
+    });
+  }
+  bindSearch('#mSearchInput', '#mSearchPop');
   const mDiscover = $('#mDiscoverBtn');
   if (mDiscover) mDiscover.addEventListener('click', openDiscoverModal);
   const mNotify = $('#mNotifyBtn');
@@ -1787,6 +1802,96 @@ function openSettingsWindow() {
   if (win) win.focus();
   else toast('设置窗口被浏览器拦截，请允许弹出窗口', 'error');
 }
+/* ==================== 移动端：底部导航 ==================== */
+
+// 底部导航：会话 / 设置（设置打开独立设置页，与 Telegram 的底部标签一致）
+function setMobileTab(tab) {
+  state.mobileTab = tab;
+  const bar = $('#tabBar');
+  if (bar) bar.querySelectorAll('.tab-item').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
+  if (tab === 'settings') { location.href = './settings.html'; return; }
+  document.body.classList.remove('mtab-contacts');
+}
+
+function openMobileContacts() {
+  document.body.classList.add('mtab-contacts');
+  renderMobileDmList();
+}
+
+function closeMobileContacts() {
+  document.body.classList.remove('mtab-contacts');
+}
+/* ==================== 移动端长按 ==================== */
+
+// 安卓端长按 = 右键：长按会话/消息弹出操作菜单
+function bindLongPress(host) {
+  let timer = null;
+  let moved = false;
+  host.addEventListener('touchstart', (e) => {
+    const roomEl = e.target.closest('.room-item');
+    const msgEl = e.target.closest('.msg');
+    if (!roomEl && !msgEl) return;
+    moved = false;
+    const t = e.touches[0];
+    timer = setTimeout(() => {
+      if (moved) return;
+      const x = t.clientX;
+      const y = t.clientY;
+      if (msgEl) {
+        const mid = msgEl.dataset.mid;
+        const c = state.activeRoom ? roomCache(state.activeRoom.id) : null;
+        const msg = c && c.list.find((m) => m.id === mid);
+        if (msg) {
+          const own = state.user && msg.userId === state.user.id;
+          openMessageMenu(msg, own, x, y);
+        }
+      } else if (roomEl) {
+        const room = state.rooms.find((r) => r.id === roomEl.dataset.roomId);
+        if (room) openRoomMenu(room, x, y);
+      }
+      if (navigator.vibrate) { try { navigator.vibrate(18); } catch { /* 忽略 */ } }
+    }, 480);
+  }, { passive: true });
+  const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
+  host.addEventListener('touchmove', () => { moved = true; cancel(); }, { passive: true });
+  host.addEventListener('touchend', cancel, { passive: true });
+  host.addEventListener('touchcancel', cancel, { passive: true });
+}
+
+/* ==================== 安卓原生桥 ==================== */
+
+function isAndroidApp() {
+  return !!(window.wmessageNative && window.wmessageNative.notify);
+}
+
+// 安卓端通知走系统通知栏（与桌面端的系统通知一致）
+function androidNotify(title, body, roomId) {
+  try { window.wmessageNative.notify(title, body, roomId || ''); } catch { /* 忽略 */ }
+}
+
+// 安卓返回键：返回 'handled' 表示页面已处理，否则由系统退出
+window.wmessageAndroidBack = function () {
+  const anyMenu = document.getElementById('ctxMenu');
+  if (anyMenu) { closeCtxMenu(); return 'handled'; }
+  if ($('#emojiPanel') && $('#emojiPanel').classList.contains('open')) { toggleEmojiPanel(); return 'handled'; }
+  if ($('#chatSearch') && !$('#chatSearch').hidden) { toggleChatSearch(false); return 'handled'; }
+  if (state.replyTo) { state.replyTo = null; renderReplyBar(); return 'handled'; }
+  if (state.isMobile && document.body.classList.contains('mtab-settings')) {
+    if (state.mSettingSection) { state.mSettingSection = null; renderMobileSettings(); return 'handled'; }
+    setMobileTab('chats');
+    return 'handled';
+  }
+  if (state.isMobile && document.body.classList.contains('mtab-contacts')) { setMobileTab('chats'); return 'handled'; }
+  if (state.activeRoom) { closeRoom(); return 'handled'; }
+  return 'pass';
+};
+
+// 从通知进入：打开对应会话
+window.wmessageAndroidOpenRoom = function (roomId) {
+  const room = state.rooms.find((r) => r.id === roomId);
+  if (room) openRoom(room);
+};
+
 /* ==================== 退出 ==================== */
 
 async function logout(reason = '') {
@@ -1816,6 +1921,9 @@ async function logout(reason = '') {
 
 /* ==================== 启动 ==================== */
 boot();
+
+
+
 
 
 
