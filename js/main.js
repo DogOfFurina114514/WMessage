@@ -83,15 +83,33 @@ function setChatOpen(open) {
 
 async function boot() {
   if ('serviceWorker' in navigator) {
-    // 前端有更新时（新 Service Worker 接管）自动刷新一次，避免停留在旧版本
-    let swDone = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (swDone) return;
-      swDone = true;
-      location.reload();
-    });
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    if (location.hostname === 'app.local') {
+      // 桌面端直接读取本地文件，不需要离线缓存；并注销历史遗留的 Service Worker
+      // （否则它会一直用缓存里的旧页面/样式响应，导致更新不生效）
+      navigator.serviceWorker.getRegistrations()
+        .then((rs) => rs.forEach((r) => r.unregister()))
+        .catch(() => {});
+    } else {
+      // 网页端：前端有更新时（新 Service Worker 接管）自动刷新一次，避免停留在旧版本
+      let swDone = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (swDone) return;
+        swDone = true;
+        location.reload();
+      });
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    }
   }
+  // 上报构建标记：便于在外壳日志里确认页面实际加载的版本
+  desktopCall('shellLog', { text: 'ui-build v9 sheets=' + document.styleSheets.length });
+  // 延迟自检：把关键元素的最终 display 报给外壳（排查"元素漏到桌面端"这类问题）
+  setTimeout(function () {
+    try {
+      var vis = function (sel) { var n = document.querySelector(sel); return n ? getComputedStyle(n).display : 'missing'; };
+      desktopCall('shellLog', { text: 'selfcheck tabbar=' + vis('.tabbar') + ' mtopbar=' + vis('.m-topbar')
+        + ' fab=' + vis('.fab') + ' sideuser=' + vis('.side-user') + ' theme=' + document.documentElement.className });
+    } catch (e) { desktopCall('shellLog', { text: 'selfcheck error ' + e.message }); }
+  }, 2500);
   const token = getToken();
   if (token && getUser()) {
     try {
@@ -1906,6 +1924,9 @@ window.wmessageAndroidOpenRoom = function (roomId) {
 /* ==================== 退出 ==================== */
 
 async function logout(reason = '') {
+  // 分步日志：便于在外壳日志中定位退出流程卡在哪一步
+  const dbg = (s) => { try { desktopCall('shellLog', { text: 'logout ' + s }); } catch (e) { /* 忽略 */ } };
+  dbg('start reason=' + (reason || 'user'));
   if (!reason) {
     // 自绘确认框：任何异常都不能阻塞退出
     let ok = true;
@@ -1917,7 +1938,8 @@ async function logout(reason = '') {
         cancelLabel: '取消',
       });
     } catch (e) { ok = true; }
-    if (!ok) return;
+    dbg('confirmed=' + ok);
+    if (!ok) { dbg('cancelled'); return; }
   }
   // 不等待服务端登出（网络慢时会表现为按钮没反应），本地立即清除并回登录页
   try { api.signOut(); } catch (e) { /* 忽略 */ }
@@ -1931,6 +1953,7 @@ async function logout(reason = '') {
   state.activeRoom = null;
   state.user = null;
   // 退出后回到独立登录页
+  dbg('cleared -> navigating to login.html');
   location.replace('./login.html');
   if (reason) toast(reason, 'error');
 }
